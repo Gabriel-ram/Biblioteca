@@ -9,7 +9,12 @@ from database import init_db, get_db_connection
 from mailer import enmascarar_correo
 from worker import start_worker
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)],
+    force=True
+)
 logger = logging.getLogger("notificaciones")
 
 app = Flask(__name__)

@@ -1,8 +1,11 @@
 import os
+import re
+import ssl
 import json
 import html
 import smtplib
 import logging
+import email.utils
 from email.message import EmailMessage
 
 logger = logging.getLogger("notificaciones.mailer")
@@ -24,21 +27,25 @@ def enmascarar_correo(correo: str) -> str:
 
 def preparar_contenido_correo(tipo: str, usuario: str, asunto: str = None, mensaje: str = None, datos_raw = None):
     """Genera asunto, texto plano y HTML autosuficientes según el tipo de notificación."""
+    # Comprobar que datos sea un dict
     datos = {}
     if isinstance(datos_raw, str) and datos_raw.strip():
         try:
-            datos = json.loads(datos_raw)
+            parsed = json.loads(datos_raw)
+            datos = parsed if isinstance(parsed, dict) else {}
         except Exception:
             datos = {}
     elif isinstance(datos_raw, dict):
         datos = datos_raw
+    else:
+        datos = {}
 
     titulo = datos.get("titulo") or datos.get("libro_titulo") or "Libro del catálogo"
     fecha_limite = datos.get("fecha_limite") or "Consultar en el sistema"
     monto = datos.get("monto") or datos.get("monto_multa")
     dias_retraso = datos.get("dias_retraso")
-    
-    contacto = os.getenv("BIBLIOTECA_CONTACTO", "Biblioteca Central — contacto@biblioteca.example.com")
+
+    contacto = os.getenv("BIBLIOTECA_CONTACTO") or "Biblioteca Central — contacto@biblioteca.example.com"
     tipo_norm = (tipo or "").strip().upper()
 
     if tipo_norm == "PRESTAMO":
@@ -102,7 +109,7 @@ def preparar_contenido_correo(tipo: str, usuario: str, asunto: str = None, mensa
         monto_str = f"${float(monto):.2f}" if monto is not None else "Consultar en el sistema"
         dias_str = f"- Días de retraso: {dias_retraso}\n" if dias_retraso else ""
         dias_html = f"<li><strong>Días de retraso:</strong> {html.escape(str(dias_retraso))}</li>" if dias_retraso else ""
-        
+
         texto_plano = (
             f"Estimado/a {usuario}:\n\n"
             f"Se ha registrado una multa por retraso en la devolución de tu préstamo:\n"
@@ -151,7 +158,10 @@ def preparar_contenido_correo(tipo: str, usuario: str, asunto: str = None, mensa
 </body>
 </html>"""
 
-    asunto_final = (asunto or "").strip() or asunto_def
+    asunto_base = (asunto or "").strip() or asunto_def
+    # Reemplazar saltos de línea del asunto por espacios
+    asunto_final = re.sub(r'[\r\n]+', ' ', asunto_base).strip()
+
     return asunto_final, texto_plano.strip(), html_content
 
 
@@ -160,15 +170,16 @@ def enviar_correo(correo_destino: str, asunto: str, texto_plano: str, html_conte
     if not correo_destino or "@" not in correo_destino:
         raise ValueError("Correo destino no válido")
 
-    host = os.getenv("SMTP_HOST", "mailpit")
-    port = int(os.getenv("SMTP_PORT", 1025))
-    user = os.getenv("SMTP_USER", "").strip()
-    password = os.getenv("SMTP_PASSWORD", "").strip()
-    timeout = float(os.getenv("SMTP_TIMEOUT", 10))
-    mode = os.getenv("SMTP_MODE", "none").strip().lower()
+    # Lectura segura con 'os.getenv(...) or valor_por_defecto' para tolerar variables vacías
+    host = os.getenv("SMTP_HOST") or "mailpit"
+    port = int(os.getenv("SMTP_PORT") or 1025)
+    user = (os.getenv("SMTP_USER") or "").strip()
+    password = (os.getenv("SMTP_PASSWORD") or "").strip()
+    timeout = float(os.getenv("SMTP_TIMEOUT") or 10)
+    mode = (os.getenv("SMTP_MODE") or "none").strip().lower()
 
-    mail_from = os.getenv("MAIL_FROM", "biblioteca@example.com")
-    mail_from_name = os.getenv("MAIL_FROM_NAME", "Sistema Biblioteca")
+    mail_from = os.getenv("MAIL_FROM") or "biblioteca@example.com"
+    mail_from_name = os.getenv("MAIL_FROM_NAME") or "Sistema Biblioteca"
 
     msg = EmailMessage()
     msg['Subject'] = asunto
@@ -178,17 +189,23 @@ def enviar_correo(correo_destino: str, asunto: str, texto_plano: str, html_conte
         msg['From'] = mail_from
     msg['To'] = correo_destino
 
+    # Encabezados Date y Message-ID
+    msg['Date'] = email.utils.formatdate(localtime=True)
+    msg['Message-ID'] = email.utils.make_msgid()
+
     msg.set_content(texto_plano)
     msg.add_alternative(html_content, subtype='html')
 
+    context = ssl.create_default_context()
+
     if mode == "ssl":
-        with smtplib.SMTP_SSL(host, port, timeout=timeout) as server:
+        with smtplib.SMTP_SSL(host, port, timeout=timeout, context=context) as server:
             if user and password:
                 server.login(user, password)
             server.send_message(msg)
     elif mode == "starttls":
         with smtplib.SMTP(host, port, timeout=timeout) as server:
-            server.starttls()
+            server.starttls(context=context)
             if user and password:
                 server.login(user, password)
             server.send_message(msg)
@@ -197,4 +214,3 @@ def enviar_correo(correo_destino: str, asunto: str, texto_plano: str, html_conte
             if user and password:
                 server.login(user, password)
             server.send_message(msg)
-

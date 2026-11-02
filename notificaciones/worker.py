@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import logging
 import threading
@@ -14,6 +15,28 @@ _worker_running = threading.Event()
 
 # Intervalos de backoff exponencial en segundos: 30s, 2m, 10m, 1h, 1h
 BACKOFF_STEPS = [30, 120, 600, 3600, 3600]
+
+EMAIL_REGEX_PATTERN = re.compile(r'([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)')
+
+
+def _enmascarar_correo_match(match):
+    user = match.group(1)
+    domain = match.group(2)
+    if len(user) <= 1:
+        masked_user = user + "***"
+    else:
+        masked_user = user[0] + "***"
+    return f"{masked_user}@{domain}"
+
+
+def sanitizar_error(error) -> str:
+    """(a) Reemplaza cualquier dirección de correo por su versión enmascarada (a***@dominio)
+    y (b) recorta el texto a un máximo de 200 caracteres."""
+    if not error:
+        return ""
+    texto = str(error)
+    texto_enmascarado = EMAIL_REGEX_PATTERN.sub(_enmascarar_correo_match, texto)
+    return texto_enmascarado[:200]
 
 
 def procesar_notificaciones_pendientes():
@@ -110,10 +133,10 @@ def procesar_notificaciones_pendientes():
 
             except Exception as e:
                 nuevos_intentos = intentos_actuales + 1
-                error_str = str(e)
+                error_sanitizado = sanitizar_error(e)
                 logger.warning(
                     f"Fallo al enviar notificación #{notif_id} a {enmascarar_correo(correo_destino)} "
-                    f"(intento {nuevos_intentos}/{max_intentos}): {error_str}"
+                    f"(intento {nuevos_intentos}/{max_intentos}): {error_sanitizado}"
                 )
 
                 if nuevos_intentos >= max_intentos:
@@ -123,7 +146,7 @@ def procesar_notificaciones_pendientes():
                         SET estado = 'FALLIDA', intentos = ?, ultimo_error = ?, proximo_intento = NULL
                         WHERE id = ?
                         """,
-                        (nuevos_intentos, error_str, notif_id)
+                        (nuevos_intentos, error_sanitizado, notif_id)
                     )
                 else:
                     backoff_seg = BACKOFF_STEPS[min(nuevos_intentos - 1, len(BACKOFF_STEPS) - 1)]
@@ -134,7 +157,7 @@ def procesar_notificaciones_pendientes():
                         SET intentos = ?, ultimo_error = ?, proximo_intento = ?
                         WHERE id = ?
                         """,
-                        (nuevos_intentos, error_str, proximo, notif_id)
+                        (nuevos_intentos, error_sanitizado, proximo, notif_id)
                     )
                 conn.commit()
 
@@ -151,7 +174,6 @@ def _worker_loop():
             logger.error(f"Error inesperado en ciclo de procesamiento del worker: {err}")
 
         intervalo = float(os.getenv("WORKER_INTERVAL", 5))
-        # Dormir en pequeños intervalos para responder rápidamente a detención
         tiempo_dormido = 0.0
         while tiempo_dormido < intervalo and _worker_running.is_set():
             time.sleep(min(0.5, intervalo - tiempo_dormido))
@@ -172,4 +194,3 @@ def start_worker():
         )
         _worker_thread.start()
         logger.info("Hilo demonio de Notificaciones iniciado correctamente.")
-
