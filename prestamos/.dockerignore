@@ -16,5 +16,3 @@ venv/
 *.md
 Dockerfile
 .dockerignore
-# Excluir el directorio de templates (el front se sirve desde frontend/ vía Caddy)
-templates/

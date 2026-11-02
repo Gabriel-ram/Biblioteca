@@ -473,8 +473,20 @@ def revisar_vencimientos():
 
 # --- PROXY CATÁLOGO (LIBROS Y AUTORES) ---
 
-@app.route('/libros', methods=['POST'])
-def proxy_crear_libro():
+@app.route('/libros', methods=['GET', 'POST'])
+def proxy_libros():
+    if request.method == 'GET':
+        try:
+            resp = requests.get(
+                f"{CATALOGO_URL.rstrip('/')}/libros",
+                params=request.args,
+                timeout=REQUEST_TIMEOUT
+            )
+            data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else resp.text
+            return jsonify(data), resp.status_code
+        except requests.RequestException as e:
+            logger.error(f"Error comunicando con Catálogo al obtener libros: {e}")
+            return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
     try:
         resp = requests.post(
             f"{CATALOGO_URL.rstrip('/')}/libros",
@@ -526,8 +538,20 @@ def proxy_eliminar_libro(libro_id):
         logger.error(f"Error comunicando con Catálogo al eliminar libro {libro_id}: {e}")
         return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
 
-@app.route('/autores', methods=['POST'])
-def proxy_crear_autor():
+@app.route('/autores', methods=['GET', 'POST'])
+def proxy_autores():
+    if request.method == 'GET':
+        try:
+            resp = requests.get(
+                f"{CATALOGO_URL.rstrip('/')}/autores",
+                params=request.args,
+                timeout=REQUEST_TIMEOUT
+            )
+            data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else resp.text
+            return jsonify(data), resp.status_code
+        except requests.RequestException as e:
+            logger.error(f"Error comunicando con Catálogo al obtener autores: {e}")
+            return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
     try:
         resp = requests.post(
             f"{CATALOGO_URL.rstrip('/')}/autores",
