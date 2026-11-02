@@ -1,5 +1,41 @@
 # CHANGELOG - Refactor Microservicios v2
 
+## [F7] - Envío de Correos en Notificaciones
+
+### Base de Datos (`notificaciones/database.py`)
+- Migración idempotente en `init_db()` mediante `ALTER TABLE ADD COLUMN` para la tabla `notificaciones`:
+  - Columnas: `correo_destino TEXT`, `asunto TEXT`, `estado TEXT`, `intentos INTEGER NOT NULL DEFAULT 0`, `proximo_intento TEXT`, `ultimo_error TEXT`, `fecha_envio TEXT`, `clave_idempotencia TEXT`, `datos TEXT`.
+  - Estados soportados: `PENDIENTE`, `ENVIADA`, `FALLIDA` y `HISTORICA`.
+  - Filas preexistentes asignadas automáticamente a `HISTORICA` para evitar envíos no deseados de datos legados.
+  - Índice único sobre clave de idempotencia: `CREATE UNIQUE INDEX IF NOT EXISTS idx_notificaciones_clave_idempotencia ON notificaciones(clave_idempotencia)` (permite múltiples registros con `NULL`).
+
+### Worker de Envío Asíncrono (`notificaciones/worker.py`)
+- Hilo demonio (`threading.Thread`) iniciado una sola vez por proceso bajo Gunicorn (`--workers 1 --threads 4`).
+- Ciclo periódico de sondeo cada `WORKER_INTERVAL` segundos (por defecto 5 s).
+- Reclamo atómico de notificaciones pendientes (`estado = 'PENDIENTE'` y `proximo_intento <= ahora`) con bloqueo temporal de 120 s mediante `UPDATE ... WHERE rowcount == 1`.
+- Estrategia de reintentos con backoff progresivo (30 s, 2 min, 10 min, 1 h, 1 h) hasta alcanzar `MAX_INTENTOS` (por defecto 5), tras lo cual la notificación pasa a `FALLIDA`.
+
+### Módulo de Correo y Seguridad (`notificaciones/mailer.py`)
+- Envío multipart (texto plano y HTML auto-contenido) mediante `smtplib` y `EmailMessage`.
+- Soporte para modos `none` (Mailpit sin autenticación), `starttls` (puerto 587) y `ssl` (puerto 465).
+- Plantillas diferenciadas para `PRESTAMO`, `POR_VENCER` y `MULTA` con escape HTML de datos de usuario/libro y pie de contacto (`BIBLIOTECA_CONTACTO`).
+- Enmascaramiento estricto en logs: nunca se registran contraseñas ni correos completos (se utiliza el identificador y formato `a***@dominio`).
+
+### Cambios de Contrato en la API (`notificaciones/app.py`)
+- **`POST /notificar`**:
+  - Acepta payload extendido: `{tipo, usuario, correo, mensaje, datos: {titulo, fecha_limite, monto, ...}, clave}`.
+  - Validación de `tipo` obligatorio (`PRESTAMO`, `POR_VENCER`, `MULTA`) y formato de correo electrónico (HTTP 400 si son inválidos).
+  - Deduplicación por `clave`: responde **HTTP 202** con `{"status": "registrado", "id": ..., "duplicada": true|false}`.
+  - **Compatibilidad**: si no se proporciona `correo`, responde **HTTP 202** y almacena la notificación en estado `FALLIDA` con `ultimo_error = 'sin correo destino'`. *(Nota de compatibilidad: mientras Préstamos no envíe el correo en la fase correspondiente, las notificaciones originadas por devoluciones o recordatorios antiguos quedarán en estado FALLIDA sin reintentos).*
+- **`GET /notificaciones`**: Soporte para filtros de consulta `?usuario=`, `?estado=`, `?tipo=`, ordenadas por `id DESC`.
+- **`POST /notificaciones/<id>/reintentar`**:
+  - Responde **HTTP 404** si el ID no existe.
+  - Responde **HTTP 409** si el estado actual no es `FALLIDA` o no cuenta con correo destino válido.
+  - Si es elegible, responde **HTTP 200** y reencola a `PENDIENTE` con `intentos = 0` y `proximo_intento = ahora`.
+- **`GET /health`**: Ahora incluye el campo `"pendientes": n` con la cantidad de notificaciones en cola pendientes de envío.
+
+---
+
 ## [F6] - Cliente HTTP de Préstamos y Resiliencia
 
 ### Clientes HTTP Centralizados (`prestamos/clients.py`)
