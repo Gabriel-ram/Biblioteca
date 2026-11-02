@@ -81,13 +81,29 @@ class NotificacionesClient:
             logger.warning(f"Fallo de comunicación con Notificaciones [{method} {endpoint}]: {e}")
             raise ServicioNoDisponible("Notificaciones", str(e)) from e
 
-    def enviar_notificacion(self, tipo: str, usuario: str, mensaje: str) -> requests.Response:
-        """Envía una notificación (asíncrona / best-effort)."""
-        return self._request("POST", "/notificar", json={
+    def enviar_notificacion(
+        self,
+        tipo: str,
+        usuario: str,
+        correo: str = None,
+        mensaje: str = None,
+        datos: dict = None,
+        clave: str = None
+    ) -> requests.Response:
+        """Envía una notificación al microservicio Notificaciones (asíncrona / best-effort)."""
+        payload = {
             "tipo": tipo,
-            "usuario": usuario,
-            "mensaje": mensaje
-        })
+            "usuario": usuario
+        }
+        if correo is not None:
+            payload["correo"] = correo
+        if mensaje is not None:
+            payload["mensaje"] = mensaje
+        if datos is not None:
+            payload["datos"] = datos
+        if clave is not None:
+            payload["clave"] = clave
+        return self._request("POST", "/notificar", json=payload)
 
     def obtener_notificaciones(self, params: dict = None) -> requests.Response:
         return self._request("GET", "/notificaciones", params=params)

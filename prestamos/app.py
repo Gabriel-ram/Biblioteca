@@ -21,6 +21,7 @@ notificaciones_client = NotificacionesClient()
 DIAS_PRESTAMO = int(os.getenv("DIAS_PRESTAMO", 7))
 MULTA_POR_DIA = float(os.getenv("MULTA_POR_DIA", 5))
 DIAS_AVISO = int(os.getenv("DIAS_AVISO", 2))
+NOTIFICAR_PRESTAMO = os.getenv("NOTIFICAR_PRESTAMO", "true").lower() in ("true", "1", "yes")
 
 with app.app_context():
     init_db()
@@ -210,7 +211,34 @@ def crear_prestamo():
 
         cursor.execute("SELECT * FROM prestamos WHERE id = ?", (prestamo_id,))
         prestamo = dict(cursor.fetchone())
+
+        correo_usuario = ""
+        if usuario_id:
+            cursor.execute("SELECT correo FROM usuarios WHERE id = ?", (usuario_id,))
+            u_row = cursor.fetchone()
+            if u_row and u_row['correo']:
+                correo_usuario = str(u_row['correo']).strip()
         conn.close()
+
+        if NOTIFICAR_PRESTAMO:
+            if not correo_usuario:
+                logger.info(f"Préstamo #{prestamo_id} registrado sin notificación: usuario sin correo")
+            else:
+                fecha_limite_dt = parse_date(prestamo['fecha_limite'])
+                fecha_limite_legible = fecha_limite_dt.strftime('%Y-%m-%d') if fecha_limite_dt else str(prestamo['fecha_limite'])[:10]
+                try:
+                    notificaciones_client.enviar_notificacion(
+                        tipo="PRESTAMO",
+                        usuario=usuario_nombre,
+                        correo=correo_usuario,
+                        datos={
+                            "titulo": libro_titulo,
+                            "fecha_limite": fecha_limite_legible
+                        },
+                        clave=f"PRESTAMO:{prestamo_id}"
+                    )
+                except ServicioNoDisponible as err:
+                    logger.warning(f"No se pudo enviar notificación para préstamo #{prestamo_id}: {err}")
 
         return jsonify(prestamo), 201
 
@@ -331,8 +359,8 @@ def registrar_devolucion(prestamo_id):
             monto_multa = dias_retraso * MULTA_POR_DIA
             cursor.execute(
                 """
-                INSERT INTO multas (prestamo_id, dias_retraso, monto, estado)
-                VALUES (?, ?, ?, 'PENDIENTE')
+                INSERT INTO multas (prestamo_id, dias_retraso, monto, estado, notificada)
+                VALUES (?, ?, ?, 'PENDIENTE', 0)
                 """,
                 (prestamo_id, dias_retraso, monto_multa)
             )
@@ -341,7 +369,8 @@ def registrar_devolucion(prestamo_id):
                 "prestamo_id": prestamo_id,
                 "dias_retraso": dias_retraso,
                 "monto": monto_multa,
-                "estado": "PENDIENTE"
+                "estado": "PENDIENTE",
+                "notificada": 0
             }
         conn.commit()
     except Exception as err:
@@ -365,26 +394,59 @@ def registrar_devolucion(prestamo_id):
 
     cursor.execute("SELECT * FROM prestamos WHERE id = ?", (prestamo_id,))
     prestamo_actualizado = dict(cursor.fetchone())
+
+    # Obtener correo del usuario mientras la conexión está activa
+    correo_usuario = ""
+    usuario_nombre = prestamo['usuario']
+    if prestamo.get('usuario_id'):
+        cursor.execute("SELECT correo, nombre FROM usuarios WHERE id = ?", (prestamo['usuario_id'],))
+        u_row = cursor.fetchone()
+        if u_row:
+            correo_usuario = (u_row['correo'] or '').strip()
+            if u_row['nombre']:
+                usuario_nombre = u_row['nombre']
+    elif prestamo.get('ci'):
+        cursor.execute("SELECT correo, nombre FROM usuarios WHERE codigo = ? OR ci = ?", (prestamo['ci'], prestamo['ci']))
+        u_row = cursor.fetchone()
+        if u_row:
+            correo_usuario = (u_row['correo'] or '').strip()
+            if u_row['nombre']:
+                usuario_nombre = u_row['nombre']
+
     conn.close()
 
-    # Notification delivery is best-effort: it must not undo a successful return.
+    # Envío de multa: best-effort, no anula la devolución si falla
     if multa_info:
-        mensaje_notif = (
-            f"Estimado/a {prestamo['usuario']}, su devolución del préstamo #{prestamo_id} registró "
-            f"{dias_retraso} días de retraso. Se ha generado una multa de ${monto_multa:.2f}."
-        )
-        try:
-            notif_response = notificaciones_client.enviar_notificacion(
-                tipo="MULTA",
-                usuario=prestamo['usuario'],
-                mensaje=mensaje_notif
-            )
-            if notif_response.status_code not in (200, 202):
-                logger.warning(
-                    f"Notificaciones rechazó la multa para préstamo #{prestamo_id}: HTTP {notif_response.status_code}"
+        if not correo_usuario:
+            logger.info(f"Multa para préstamo #{prestamo_id} registrada sin notificación: usuario sin correo")
+        else:
+            libro_titulo = prestamo.get('libro_titulo') or (prestamo_actualizado.get('libro_titulo') if prestamo_actualizado else '') or ''
+            try:
+                notif_response = notificaciones_client.enviar_notificacion(
+                    tipo="MULTA",
+                    usuario=usuario_nombre,
+                    correo=correo_usuario,
+                    datos={
+                        "titulo": libro_titulo,
+                        "monto": multa_info['monto'],
+                        "dias_retraso": multa_info['dias_retraso']
+                    },
+                    clave=f"MULTA:{prestamo_id}"
                 )
-        except ServicioNoDisponible as err:
-            logger.warning(f"Fallo al enviar notificación de multa para préstamo #{prestamo_id}: {err}")
+                if notif_response.status_code == 202:
+                    conn_multa = get_db_connection()
+                    try:
+                        conn_multa.execute("UPDATE multas SET notificada = 1 WHERE id = ?", (multa_info['id'],))
+                        conn_multa.commit()
+                        multa_info['notificada'] = 1
+                    finally:
+                        conn_multa.close()
+                else:
+                    logger.warning(
+                        f"Notificaciones rechazó la multa para préstamo #{prestamo_id}: HTTP {notif_response.status_code}"
+                    )
+            except ServicioNoDisponible as err:
+                logger.warning(f"Fallo al enviar notificación de multa para préstamo #{prestamo_id}: {err}")
 
     respuesta = {
         "mensaje": "Devolución registrada exitosamente",
@@ -400,56 +462,124 @@ def revisar_vencimientos():
     conn = get_db_connection()
     cursor = conn.cursor()
     ahora = datetime.now().date()
-    notificaciones_enviadas = 0
 
-    # Serialize batch runs and only mark an alert after Notificaciones accepts it.
-    cursor.execute("BEGIN IMMEDIATE")
-    cursor.execute(
-        "SELECT * FROM prestamos WHERE estado = 'ACTIVO' "
-        "AND aviso_vencimiento_enviado = 0"
-    )
-    prestamos_activos = [dict(row) for row in cursor.fetchall()]
+    revisados = 0
+    avisados = 0
+    multas_reenviadas = 0
+    sin_correo = 0
+    notificaciones_disponible = True
 
-    for prestamo in prestamos_activos:
-        fecha_limite_dt = parse_date(prestamo['fecha_limite'])
-        if not fecha_limite_dt:
-            continue
+    try:
+        # 1. Préstamos activos próximos a vencer
+        cursor.execute("""
+            SELECT p.id, p.libro_id, p.libro_titulo, p.fecha_limite, p.usuario, p.usuario_id, p.ci,
+                   u.correo as usuario_correo, u.nombre as usuario_nombre_u
+            FROM prestamos p
+            LEFT JOIN usuarios u ON (p.usuario_id = u.id OR (p.usuario_id IS NULL AND (u.codigo = p.ci OR u.ci = p.ci)))
+            WHERE p.estado = 'ACTIVO'
+              AND p.aviso_enviado_en IS NULL
+              AND p.aviso_vencimiento_enviado = 0
+            ORDER BY p.id ASC
+        """)
+        candidatos = [dict(row) for row in cursor.fetchall()]
 
-        dias_restantes = (fecha_limite_dt.date() - ahora).days
-        if dias_restantes <= DIAS_AVISO:
-            mensaje = (
-                f"RECORDATORIO: El préstamo #{prestamo['id']} (Libro ID #{prestamo['libro_id']}) "
-                f"vence el {fecha_limite_dt.strftime('%Y-%m-%d')}. Días restantes: {dias_restantes}."
-            )
-            try:
-                resp = notificaciones_client.enviar_notificacion(
-                    tipo="POR_VENCER",
-                    usuario=prestamo['usuario'],
-                    mensaje=mensaje
-                )
-                if resp.status_code in (200, 202):
-                    cursor.execute(
-                        "UPDATE prestamos SET aviso_vencimiento_enviado = 1 WHERE id = ?",
-                        (prestamo['id'],)
+        for loan in candidatos:
+            fecha_limite_dt = parse_date(loan['fecha_limite'])
+            if not fecha_limite_dt:
+                continue
+
+            dias_restantes = (fecha_limite_dt.date() - ahora).days
+            if 0 <= dias_restantes <= DIAS_AVISO:
+                revisados += 1
+                correo = (loan['usuario_correo'] or '').strip()
+                if not correo:
+                    sin_correo += 1
+                    logger.info(f"Préstamo #{loan['id']} próximo a vencer sin aviso: usuario sin correo")
+                    continue
+
+                fecha_legible = fecha_limite_dt.strftime('%Y-%m-%d')
+                usuario_nombre = loan['usuario_nombre_u'] or loan['usuario']
+
+                try:
+                    resp = notificaciones_client.enviar_notificacion(
+                        tipo="POR_VENCER",
+                        usuario=usuario_nombre,
+                        correo=correo,
+                        datos={
+                            "titulo": loan['libro_titulo'] or "",
+                            "fecha_limite": fecha_legible,
+                            "dias_restantes": dias_restantes
+                        },
+                        clave=f"POR_VENCER:{loan['id']}:{fecha_legible}"
                     )
-                    notificaciones_enviadas += 1
-                else:
-                    logger.warning(
-                        f"Notificaciones rechazó aviso para préstamo #{prestamo['id']}: "
-                        f"HTTP {resp.status_code}"
-                    )
-            except ServicioNoDisponible as err:
-                logger.warning(
-                    f"Error enviando aviso por vencer para préstamo #{prestamo['id']}: {err}"
-                )
+                    if resp.status_code == 202:
+                        cursor.execute(
+                            "UPDATE prestamos SET aviso_enviado_en = ?, aviso_vencimiento_enviado = 1 WHERE id = ?",
+                            (datetime.now().isoformat(), loan['id'])
+                        )
+                        conn.commit()
+                        avisados += 1
+                    else:
+                        logger.warning(f"Notificaciones respondió HTTP {resp.status_code} para préstamo #{loan['id']}")
+                except ServicioNoDisponible as err:
+                    logger.warning(f"Notificaciones no disponible durante revisión de préstamo #{loan['id']}: {err}")
+                    notificaciones_disponible = False
+                    break
 
-    conn.commit()
-    conn.close()
+        # 2. Reintentar multas pendientes de notificación si el servicio sigue disponible
+        if notificaciones_disponible:
+            cursor.execute("""
+                SELECT m.id as multa_id, m.prestamo_id, m.dias_retraso, m.monto,
+                       p.libro_titulo, p.usuario as prestamo_usuario,
+                       u.correo as usuario_correo, u.nombre as usuario_nombre_u
+                FROM multas m
+                JOIN prestamos p ON m.prestamo_id = p.id
+                LEFT JOIN usuarios u ON (p.usuario_id = u.id OR (p.usuario_id IS NULL AND (u.codigo = p.ci OR u.ci = p.ci)))
+                WHERE m.notificada = 0
+                ORDER BY m.id ASC
+            """)
+            multas_pendientes = [dict(row) for row in cursor.fetchall()]
+
+            for m in multas_pendientes:
+                correo = (m['usuario_correo'] or '').strip()
+                if not correo:
+                    continue
+
+                usuario_nombre = m['usuario_nombre_u'] or m['prestamo_usuario']
+                try:
+                    resp = notificaciones_client.enviar_notificacion(
+                        tipo="MULTA",
+                        usuario=usuario_nombre,
+                        correo=correo,
+                        datos={
+                            "titulo": m['libro_titulo'] or "",
+                            "monto": m['monto'],
+                            "dias_retraso": m['dias_retraso']
+                        },
+                        clave=f"MULTA:{m['prestamo_id']}"
+                    )
+                    if resp.status_code == 202:
+                        cursor.execute(
+                            "UPDATE multas SET notificada = 1 WHERE id = ?",
+                            (m['multa_id'],)
+                        )
+                        conn.commit()
+                        multas_reenviadas += 1
+                    else:
+                        logger.warning(f"Notificaciones respondió HTTP {resp.status_code} para multa #{m['multa_id']}")
+                except ServicioNoDisponible as err:
+                    logger.warning(f"Notificaciones no disponible durante reenvío de multa #{m['multa_id']}: {err}")
+                    notificaciones_disponible = False
+                    break
+    finally:
+        conn.close()
 
     return jsonify({
-        "status": "Revisión de vencimientos completada",
-        "prestamos_revisados": len(prestamos_activos),
-        "notificaciones_enviadas": notificaciones_enviadas
+        "revisados": revisados,
+        "avisados": avisados,
+        "multas_reenviadas": multas_reenviadas,
+        "sin_correo": sin_correo,
+        "notificaciones_disponible": notificaciones_disponible
     }), 200
 
 # --- PROXY CATÁLOGO (LIBROS Y AUTORES) ---

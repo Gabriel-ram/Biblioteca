@@ -1,5 +1,52 @@
 # CHANGELOG - Refactor Microservicios v2
 
+## [F8] - Avisos Programados y Eventos de Notificación en Préstamos
+
+### Cliente HTTP (`prestamos/clients.py`)
+- Ampliado `NotificacionesClient.enviar_notificacion` para soportar el contrato completo de Notificaciones:
+  - Parámetros: `tipo`, `usuario`, `correo=None`, `mensaje=None`, `datos=None`, `clave=None`.
+  - Envía la carga útil en formato JSON al endpoint `POST /notificar`.
+  - Mantiene captura de `RequestException` traduciéndola a `ServicioNoDisponible` con log que no expone datos sensibles.
+
+### Eventos en el Ciclo de Vida de Préstamos (`prestamos/app.py`)
+- **`POST /prestamos` (Evento `PRESTAMO`)**:
+  - Al crear exitosamente un préstamo, si `NOTIFICAR_PRESTAMO` está activo (por defecto `true`), consulta el correo del usuario asociado.
+  - Si el usuario no tiene correo: no envía evento y registra un log informativo sin PII (`Préstamo #id registrado sin notificación: usuario sin correo`).
+  - Si el usuario tiene correo: envía evento `PRESTAMO` con clave `PRESTAMO:<id>` y carga `datos: {titulo, fecha_limite}` (fecha en formato legible `YYYY-MM-DD`).
+  - Operación best-effort: fallos o timeouts en Notificaciones nunca revierten el préstamo creado ni propagan error al cliente (responde **HTTP 201**).
+- **`PUT /prestamos/<id>/devolucion` (Evento `MULTA`)**:
+  - Al devolverse un préstamo con retraso, inserta el registro en la tabla `multas` con `notificada = 0`.
+  - Si el usuario cuenta con correo, intenta enviar el evento `MULTA` con clave `MULTA:<prestamo_id>` y datos `{titulo, monto, dias_retraso}`.
+  - Si Notificaciones responde **HTTP 202**, actualiza atómicamente `multas.notificada = 1`.
+  - Tolerancia a caídas: si Notificaciones no está disponible o falla, la devolución responde **HTTP 200** igualmente y la multa se conserva con `notificada = 0` para su posterior reenvío.
+- **`POST /prestamos/revisar-vencimientos` (Revisión Batch Idempotente)**:
+  - Consulta préstamos en estado `ACTIVO` que no hayan recibido aviso (`aviso_enviado_en IS NULL` y `aviso_vencimiento_enviado = 0`).
+  - Si `0 <= dias_restantes <= DIAS_AVISO`:
+    - Incrementa el contador de `revisados`.
+    - Si el usuario no tiene correo: incrementa `sin_correo` y **no** marca el préstamo.
+    - Si tiene correo: envía `POR_VENCER` con clave `POR_VENCER:<id>:<fecha_limite>`.
+    - Solo ante **HTTP 202**, actualiza `aviso_enviado_en` y `aviso_vencimiento_enviado = 1`, e incrementa `avisados`.
+  - Reintento de multas: para multas con `notificada = 0` cuyos usuarios tengan correo, reintenta el envío con clave `MULTA:<prestamo_id>` y actualiza `notificada = 1` si responde **HTTP 202** (incrementando `multas_reenviadas`).
+  - Cortocircuito de seguridad: ante fallo de conexión (`ServicioNoDisponible`), aborta el ciclo inmediatamente y responde con `notificaciones_disponible = false` sin marcar préstamos.
+  - Respuesta JSON: `{"revisados": n, "avisados": n, "multas_reenviadas": n, "sin_correo": n, "notificaciones_disponible": true|false}` con código **HTTP 200**.
+
+### Scripts y Automatización
+- **`scripts/ejecutar_avisos.sh`**: Script bash para invocación periódica desde Linux/cron. Acepta `BASE_URL` (por defecto `http://127.0.0.1:8002`), credenciales Basic Auth opcionales (`BASIC_AUTH_USER`/`BASIC_AUTH_PASSWORD`), imprime respuesta y finaliza con código de salida `1` ante respuesta no-200.
+- **`scripts/ejecutar_avisos.ps1`**: Script PowerShell nativo con idéntica lógica para entornos Windows puros.
+- **`docs/AVISOS.md`**: Documentación de la periodicidad recomendada (cron diario a las 08:00 `0 8 * * *`) y guía paso a paso para programar tareas en Linux (`crontab`) y Windows (`Task Scheduler`).
+
+### Verificación y Pruebas
+- Creado `scripts/verify_f8.sh` evaluando integralmente:
+  - Escenario A: Creación de préstamo con notificación `PRESTAMO` verificada en Mailpit.
+  - Escenario B: Revisión de vencimientos (`POR_VENCER`) e idempotencia (segunda corrida da `avisados = 0` sin duplicados).
+  - Escenario C: Resiliencia con servicio de Notificaciones detenido (`notificaciones_disponible: false`, préstamo no marcado) y recuperación posterior.
+  - Escenario D: Multa por devolución tardía (`notificada = 1`), caso degradado con Notificaciones detenido (`notificada = 0`) y reenvío automático en la siguiente revisión.
+  - Escenario E: Usuario sin correo (`sin_correo = 1`, préstamo no marcado).
+  - Escenario F: Verificación estricta de ausencia de CI y direcciones completas de correo en logs.
+  - Escenario G: Ejecución exitosa de `test_endpoints.sh`, `test_concurrencia.sh` y `ejecutar_avisos.sh`.
+
+---
+
 ## [F7] - Envío de Correos en Notificaciones
 
 ### Base de Datos (`notificaciones/database.py`)

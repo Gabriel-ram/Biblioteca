@@ -8,8 +8,8 @@ Control de estado de las fases del refactor (F1 a F12):
 - [x] **F4**: Integridad del catálogo (DELETE y PUT con validación de préstamos y stock) — **Hecha**
 - [x] **F5**: Usuarios dentro de Préstamos — **Hecha**
 - [x] **F6**: Cliente HTTP de Préstamos y Resiliencia — **Hecha**
-- [ ] **F7**: Envío de correos en Notificaciones — **En curso**
-- [ ] **F8**: Pendiente
+- [x] **F7**: Envío de correos en Notificaciones — **Hecha**
+- [x] **F8**: Avisos programados y eventos de notificación en Préstamos — **Hecha**
 - [ ] **F9**: Pendiente
 - [ ] **F10**: Pendiente
 - [ ] **F11**: Pendiente
