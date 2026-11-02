@@ -34,16 +34,22 @@ def init_db():
         )
     ''')
 
-    # Migrate databases created before reminder deduplication was introduced.
+    # Migrar columnas en prestamos
     cursor.execute("PRAGMA table_info(prestamos)")
-    columnas = {row[1] for row in cursor.fetchall()}
-    if 'aviso_vencimiento_enviado' not in columnas:
+    cols_prestamos = {row[1] for row in cursor.fetchall()}
+    if 'aviso_vencimiento_enviado' not in cols_prestamos:
         cursor.execute(
             "ALTER TABLE prestamos ADD COLUMN aviso_vencimiento_enviado "
             "INTEGER NOT NULL DEFAULT 0"
         )
-    if 'ci' not in columnas:
+    if 'ci' not in cols_prestamos:
         cursor.execute("ALTER TABLE prestamos ADD COLUMN ci TEXT")
+    if 'usuario_id' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN usuario_id INTEGER")
+    if 'libro_titulo' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN libro_titulo TEXT")
+    if 'aviso_enviado_en' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN aviso_enviado_en TEXT")
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS multas (
@@ -56,22 +62,64 @@ def init_db():
         )
     ''')
 
+    cursor.execute("PRAGMA table_info(multas)")
+    cols_multas = {row[1] for row in cursor.fetchall()}
+    if 'notificada' not in cols_multas:
+        cursor.execute("ALTER TABLE multas ADD COLUMN notificada INTEGER NOT NULL DEFAULT 0")
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
-            ci TEXT NOT NULL UNIQUE,
+            ci TEXT,
             fecha_registro TEXT NOT NULL
         )
     ''')
 
+    cursor.execute("PRAGMA table_info(usuarios)")
+    cols_usuarios = {row[1] for row in cursor.fetchall()}
+    if 'codigo' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN codigo TEXT")
+    if 'correo' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN correo TEXT NOT NULL DEFAULT ''")
+    if 'tipo' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN tipo TEXT NOT NULL DEFAULT 'ESTUDIANTE'")
+    if 'activo' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+
     # Poblar con usuarios que ya tengan préstamos registrados
     cursor.execute("""
-        INSERT OR IGNORE INTO usuarios (nombre, ci, fecha_registro)
-        SELECT DISTINCT usuario, ci, MIN(fecha_prestamo)
+        INSERT OR IGNORE INTO usuarios (nombre, ci, codigo, fecha_registro, tipo, activo, correo)
+        SELECT DISTINCT usuario, ci, ci, MIN(fecha_prestamo), 'ESTUDIANTE', 1, ''
         FROM prestamos
         WHERE usuario IS NOT NULL AND ci IS NOT NULL AND TRIM(ci) != ''
         GROUP BY ci
+    """)
+
+    # Rellenar codigo = ci en usuarios existentes donde falte codigo
+    cursor.execute("""
+        UPDATE usuarios 
+        SET codigo = ci 
+        WHERE (codigo IS NULL OR TRIM(codigo) = '') AND ci IS NOT NULL AND TRIM(ci) != ''
+    """)
+
+    # Asegurar valores por defecto en columnas de usuarios existentes
+    cursor.execute("UPDATE usuarios SET correo = '' WHERE correo IS NULL")
+    cursor.execute("UPDATE usuarios SET tipo = 'ESTUDIANTE' WHERE tipo IS NULL OR TRIM(tipo) = ''")
+    cursor.execute("UPDATE usuarios SET activo = 1 WHERE activo IS NULL")
+
+    # Índice único sobre usuarios.codigo
+    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_codigo ON usuarios(codigo)")
+
+    # Enlazar usuario_id en prestamos existentes si no lo tienen
+    cursor.execute("""
+        UPDATE prestamos
+        SET usuario_id = (
+            SELECT id FROM usuarios 
+            WHERE (usuarios.codigo = prestamos.ci OR usuarios.ci = prestamos.ci)
+            LIMIT 1
+        )
+        WHERE usuario_id IS NULL AND ci IS NOT NULL AND TRIM(ci) != ''
     """)
     
     conn.commit()

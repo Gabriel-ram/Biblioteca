@@ -1,5 +1,41 @@
 # CHANGELOG - Refactor Microservicios v2
 
+## [F5] - Usuarios dentro de Préstamos
+
+### Base de Datos (`prestamos/database.py`)
+- Migración idempotente en `init_db()` mediante `ALTER TABLE ADD COLUMN`:
+  - Tabla `usuarios`: columnas `codigo TEXT`, `correo TEXT NOT NULL DEFAULT ''`, `tipo TEXT NOT NULL DEFAULT 'ESTUDIANTE'`, `activo INTEGER NOT NULL DEFAULT 1`.
+  - Migración de datos existentes: rellena `codigo = ci` para usuarios existentes, asigna `tipo = 'ESTUDIANTE'`, `correo = ''`, `activo = 1`.
+  - Creación de índice único: `CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_codigo ON usuarios(codigo)`.
+  - Tabla `prestamos`: columnas `usuario_id INTEGER`, `libro_titulo TEXT`, `aviso_enviado_en TEXT`. Enlace automático de `usuario_id` para préstamos existentes.
+  - Tabla `multas`: columna `notificada INTEGER NOT NULL DEFAULT 0`.
+  - Conservadas columnas heredadas `ci` y `aviso_vencimiento_enviado` sin pérdida de datos.
+
+### Módulo y Blueprint de Usuarios (`prestamos/usuarios.py`)
+- Rutas separadas de la lógica de servicio:
+  - `POST /usuarios {codigo, nombre, correo, tipo}`:
+    - **201 Created** al registrar.
+    - **400 Bad Request** si falta algún campo, el correo no tiene formato válido (`regex`) o el tipo no es `ESTUDIANTE` ni `DOCENTE`.
+    - **409 Conflict** si el código ya existe.
+    - Mantiene retrocompatibilidad con formato antiguo `{nombre, ci}`.
+  - `GET /usuarios`: soporta filtros `?tipo=` y `?q=` (búsqueda sobre nombre o código).
+  - `GET /usuarios/<id>`: **200 OK** con datos del usuario, **404 Not Found** si no existe.
+  - `PUT /usuarios/<id>`: **200 OK** con usuario actualizado; valida unicidad de código (409), formato de correo y tipo (400) y existencia (404).
+  - `DELETE /usuarios/<id>`: baja lógica (`activo = 0`), **204 No Content**; **409 Conflict** si tiene préstamos en estado `ACTIVO`; **404 Not Found** si no existe.
+
+### Contratos de Préstamos (`prestamos/app.py`)
+- `POST /prestamos`:
+  - Formato nuevo: `{libro_id, usuario_id}` o `{libro_id, codigo_usuario}`. Valida existencia (404) y estado activo (409 si `activo == 0`).
+  - Formato antiguo: `{libro_id, usuario, ci}`. Busca usuario por `codigo = ci`; si no existe, lo crea con correo vacío.
+  - Almacenamiento: guarda `usuario_id`, `libro_titulo` (tomado de la respuesta de Catálogo) y copia de `usuario` (nombre).
+  - Respuesta: conserva todos los campos anteriores y añade `usuario_id` y `libro_titulo`.
+- `GET /prestamos`: añade soporte para filtros `?usuario_id=` y `?estado=` además de `?usuario=`.
+
+### Seguridad de Datos
+- Las columnas `ci` y correos electrónicos no son emitidas en logs del servicio.
+
+---
+
 ## [F4] - Integridad del catálogo
 
 ### Contrato de DELETE `/libros/<id>`

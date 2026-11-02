@@ -6,7 +6,7 @@ Control de estado de las fases del refactor (F1 a F12):
 - [ ] **F2**: Pendiente
 - [x] **F3**: SQLite con WAL y operaciones atómicas — **Hecha**
 - [x] **F4**: Integridad del catálogo (DELETE y PUT con validación de préstamos y stock) — **Hecha**
-- [ ] **F5**: Pendiente
+- [ ] **F5**: Usuarios dentro de Préstamos — **En curso**
 - [ ] **F6**: Pendiente
 - [ ] **F7**: Pendiente
 - [ ] **F8**: Pendiente

@@ -9,6 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("prestamos")
 
 app = Flask(__name__)
+from usuarios import usuarios_bp
+app.register_blueprint(usuarios_bp)
 
 # Configuration from Environment Variables
 CATALOGO_URL = os.getenv("CATALOGO_URL", "http://catalogo:8001")
@@ -93,14 +95,73 @@ def datos_demo():
 @app.route('/prestamos', methods=['POST'])
 def crear_prestamo():
     data = request.get_json() or {}
-    usuario = data.get('usuario')
-    ci = str(data.get('ci', '')).strip()
     libro_id = data.get('libro_id')
+    if not libro_id:
+        return jsonify({"error": "El campo 'libro_id' es obligatorio"}), 400
 
-    if not usuario or not ci or not libro_id:
-        return jsonify({"error": "Los campos 'usuario', 'ci' y 'libro_id' son obligatorios"}), 400
-    if not ci.isascii() or not ci.isdigit() or len(ci) > 8:
-        return jsonify({"error": "El CI debe contener solo números y tener como máximo 8 dígitos"}), 400
+    usuario_id_param = data.get('usuario_id')
+    codigo_usuario_param = data.get('codigo_usuario')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    if usuario_id_param is not None or codigo_usuario_param is not None:
+        # Formato nuevo: {libro_id, usuario_id} o {libro_id, codigo_usuario}
+        if usuario_id_param is not None:
+            cursor.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id_param,))
+        else:
+            cursor.execute("SELECT * FROM usuarios WHERE codigo = ?", (str(codigo_usuario_param).strip(),))
+        user_row = cursor.fetchone()
+        if not user_row:
+            conn.close()
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        user_obj = dict(user_row)
+        if not user_obj.get('activo', 1):
+            conn.close()
+            return jsonify({"error": "El usuario se encuentra inactivo"}), 409
+
+        usuario_id = user_obj['id']
+        usuario_nombre = user_obj['nombre']
+        usuario_ci = user_obj.get('ci') or user_obj.get('codigo')
+
+    else:
+        # Formato antiguo: {libro_id, usuario, ci}
+        usuario_nombre = str(data.get('usuario', '')).strip()
+        ci = str(data.get('ci', '')).strip()
+
+        if not usuario_nombre or not ci:
+            conn.close()
+            return jsonify({"error": "Los campos 'usuario', 'ci' y 'libro_id' son obligatorios"}), 400
+        if not ci.isascii() or not ci.isdigit() or len(ci) > 8:
+            conn.close()
+            return jsonify({"error": "El CI debe contener solo números y tener como máximo 8 dígitos"}), 400
+
+        # Busca el usuario por codigo = ci; si no existe, créalo como antes (correo vacío)
+        cursor.execute("SELECT * FROM usuarios WHERE codigo = ? OR ci = ?", (ci, ci))
+        user_row = cursor.fetchone()
+        if user_row:
+            user_obj = dict(user_row)
+            if not user_obj.get('activo', 1):
+                conn.close()
+                return jsonify({"error": "El usuario se encuentra inactivo"}), 409
+            usuario_id = user_obj['id']
+            usuario_nombre = user_obj['nombre']
+            usuario_ci = user_obj.get('ci') or ci
+        else:
+            fecha_reg = datetime.now().isoformat()
+            cursor.execute(
+                """
+                INSERT INTO usuarios (nombre, ci, codigo, correo, tipo, activo, fecha_registro)
+                VALUES (?, ?, ?, '', 'ESTUDIANTE', 1, ?)
+                """,
+                (usuario_nombre, ci, ci, fecha_reg)
+            )
+            conn.commit()
+            usuario_id = cursor.lastrowid
+            usuario_ci = ci
+
+    conn.close()
 
     # 1. Realizar llamada HTTP a Catálogo para descontar disponibilidad
     catalogo_patch_url = f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}/disponibilidad"
@@ -108,6 +169,8 @@ def crear_prestamo():
         response = requests.patch(catalogo_patch_url, json={"operacion": "descontar"}, timeout=REQUEST_TIMEOUT)
         if response.status_code == 409:
             return jsonify({"error": "El libro no se encuentra disponible"}), 409
+        elif response.status_code == 404:
+            return jsonify({"error": "Libro no encontrado"}), 404
         elif response.status_code != 200:
             try:
                 detalle = (
@@ -125,6 +188,9 @@ def crear_prestamo():
         logger.error(f"Error conectando con Catálogo: {e}")
         return jsonify({"error": "No se pudo establecer comunicación con el servicio de Catálogo"}), 503
 
+    libro_data = response.json() if response.status_code == 200 else {}
+    libro_titulo = libro_data.get('titulo', '')
+
     # 2. Calcular fechas y registrar préstamo localmente
     fecha_actual_dt = datetime.now()
     fecha_limite_dt = fecha_actual_dt + timedelta(days=DIAS_PRESTAMO)
@@ -137,14 +203,13 @@ def crear_prestamo():
     try:
         cursor.execute(
             """
-            INSERT INTO prestamos (usuario, ci, libro_id, fecha_prestamo, fecha_limite, estado)
-            VALUES (?, ?, ?, ?, ?, 'ACTIVO')
+            INSERT INTO prestamos (
+                usuario, ci, libro_id, fecha_prestamo, fecha_limite, estado,
+                aviso_vencimiento_enviado, usuario_id, libro_titulo
+            )
+            VALUES (?, ?, ?, ?, ?, 'ACTIVO', 0, ?, ?)
             """,
-            (usuario, ci, libro_id, fecha_prestamo_str, fecha_limite_str)
-        )
-        cursor.execute(
-            "INSERT OR IGNORE INTO usuarios (nombre, ci, fecha_registro) VALUES (?, ?, ?)",
-            (usuario, ci, fecha_prestamo_str)
+            (usuario_nombre, usuario_ci, libro_id, fecha_prestamo_str, fecha_limite_str, usuario_id, libro_titulo)
         )
         conn.commit()
         prestamo_id = cursor.lastrowid
@@ -186,14 +251,27 @@ def crear_prestamo():
 @app.route('/prestamos', methods=['GET'])
 def listar_prestamos():
     usuario_filter = request.args.get('usuario')
+    usuario_id_filter = request.args.get('usuario_id')
+    estado_filter = request.args.get('estado')
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    if usuario_filter:
-        cursor.execute("SELECT * FROM prestamos WHERE usuario = ?", (usuario_filter,))
-    else:
-        cursor.execute("SELECT * FROM prestamos")
+    query = "SELECT * FROM prestamos WHERE 1=1"
+    params = []
 
+    if usuario_filter:
+        query += " AND usuario = ?"
+        params.append(usuario_filter)
+    if usuario_id_filter:
+        query += " AND usuario_id = ?"
+        params.append(usuario_id_filter)
+    if estado_filter:
+        query += " AND estado = ?"
+        params.append(estado_filter)
+
+    query += " ORDER BY id DESC"
+    cursor.execute(query, params)
     prestamos = [dict(row) for row in cursor.fetchall()]
     conn.close()
 
@@ -488,68 +566,7 @@ def eliminar_prestamo(prestamo_id):
     return jsonify({"mensaje": f"Préstamo #{prestamo_id} eliminado exitosamente"}), 200
 
 
-# --- USUARIOS ENDPOINTS ---
 
-@app.route('/usuarios', methods=['GET'])
-def listar_usuarios():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM usuarios ORDER BY nombre ASC")
-    usuarios = [dict(row) for row in cursor.fetchall()]
-    conn.close()
-    return jsonify(usuarios), 200
-
-@app.route('/usuarios', methods=['POST'])
-def crear_usuario():
-    data = request.get_json() or {}
-    nombre = str(data.get('nombre', '')).strip()
-    ci = str(data.get('ci', '')).strip()
-
-    if not nombre or not ci:
-        return jsonify({"error": "Los campos 'nombre' y 'ci' son obligatorios"}), 400
-    if not ci.isascii() or not ci.isdigit() or len(ci) > 8:
-        return jsonify({"error": "El CI debe contener solo números y tener como máximo 8 dígitos"}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM usuarios WHERE ci = ?", (ci,))
-    existente = cursor.fetchone()
-    if existente:
-        conn.close()
-        return jsonify({"error": f"Ya existe un usuario registrado con el CI {ci}"}), 409
-
-    fecha_registro = datetime.now().isoformat()
-    cursor.execute(
-        "INSERT INTO usuarios (nombre, ci, fecha_registro) VALUES (?, ?, ?)",
-        (nombre, ci, fecha_registro)
-    )
-    conn.commit()
-    user_id = cursor.lastrowid
-    cursor.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,))
-    usuario = dict(cursor.fetchone())
-    conn.close()
-    return jsonify(usuario), 201
-
-@app.route('/usuarios/<int:usuario_id>', methods=['DELETE'])
-def eliminar_usuario(usuario_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return jsonify({"error": "Usuario no encontrado"}), 404
-    user = dict(row)
-    cursor.execute("SELECT COUNT(*) as count FROM prestamos WHERE ci = ? AND estado = 'ACTIVO'", (user['ci'],))
-    activos = cursor.fetchone()['count']
-    if activos > 0:
-        conn.close()
-        return jsonify({"error": f"No se puede eliminar: el usuario tiene {activos} préstamo(s) activo(s) en curso."}), 400
-
-    cursor.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({"mensaje": f"Usuario {user['nombre']} eliminado exitosamente"}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8002, debug=True)
