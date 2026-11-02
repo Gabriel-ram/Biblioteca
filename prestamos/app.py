@@ -167,7 +167,11 @@ def crear_prestamo():
                 json={"operacion": "reponer"},
                 timeout=REQUEST_TIMEOUT
             )
-            if rollback_response.status_code != 200:
+            if rollback_response.status_code == 409:
+                logger.warning(
+                    f"Catálogo reportó 409 al reponer libro {libro_id} en rollback compensatorio: stock ya completo"
+                )
+            elif rollback_response.status_code != 200:
                 logger.error(
                     "Catálogo rechazó la compensación de stock: "
                     f"HTTP {rollback_response.status_code}"
@@ -230,7 +234,11 @@ def registrar_devolucion(prestamo_id):
             "error": "Catálogo no está disponible; el préstamo continúa activo"
         }), 503
 
-    if response.status_code != 200:
+    if response.status_code == 409:
+        logger.warning(
+            f"Catálogo reportó 409 al reponer libro {libro_id} (ejemplares ya al máximo); continuando con la devolución"
+        )
+    elif response.status_code != 200:
         conn.rollback()
         conn.close()
         logger.error(

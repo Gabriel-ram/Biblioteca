@@ -196,35 +196,42 @@ def cambiar_disponibilidad(libro_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM libros WHERE id = ?", (libro_id,))
-    row = cursor.fetchone()
-    if not row:
-        conn.close()
-        return jsonify({"error": "Libro no encontrado"}), 404
-
-    libro = dict(row)
-    disponibles = libro['ejemplares_disponibles']
-
     if operacion == 'descontar':
-        if disponibles <= 0:
+        cursor.execute(
+            """
+            UPDATE libros
+            SET ejemplares_disponibles = ejemplares_disponibles - 1,
+                estado = CASE WHEN ejemplares_disponibles - 1 = 0 THEN 'AGOTADO' ELSE 'DISPONIBLE' END
+            WHERE id = ? AND ejemplares_disponibles > 0
+            """,
+            (libro_id,)
+        )
+        if cursor.rowcount == 0:
+            cursor.execute("SELECT id FROM libros WHERE id = ?", (libro_id,))
+            if not cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Libro no encontrado"}), 404
             conn.close()
             return jsonify({"error": "Libro no disponible"}), 409
-        
-        nuevos_disponibles = disponibles - 1
-        nuevo_estado = 'AGOTADO' if nuevos_disponibles == 0 else 'DISPONIBLE'
 
     elif operacion == 'reponer':
-        nuevos_disponibles = disponibles + 1
-        nuevo_estado = 'DISPONIBLE'
+        cursor.execute(
+            """
+            UPDATE libros
+            SET ejemplares_disponibles = ejemplares_disponibles + 1,
+                estado = 'DISPONIBLE'
+            WHERE id = ? AND ejemplares_disponibles < ejemplares_totales
+            """,
+            (libro_id,)
+        )
+        if cursor.rowcount == 0:
+            cursor.execute("SELECT id FROM libros WHERE id = ?", (libro_id,))
+            if not cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Libro no encontrado"}), 404
+            conn.close()
+            return jsonify({"error": "Todos los ejemplares ya están disponibles"}), 409
 
-    cursor.execute(
-        """
-        UPDATE libros
-        SET ejemplares_disponibles = ?, estado = ?
-        WHERE id = ?
-        """,
-        (nuevos_disponibles, nuevo_estado, libro_id)
-    )
     conn.commit()
 
     cursor.execute("SELECT * FROM libros WHERE id = ?", (libro_id,))
