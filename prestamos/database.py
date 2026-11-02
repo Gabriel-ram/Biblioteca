@@ -52,6 +52,24 @@ def init_db():
             FOREIGN KEY (prestamo_id) REFERENCES prestamos (id) ON DELETE CASCADE
         )
     ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            ci TEXT NOT NULL UNIQUE,
+            fecha_registro TEXT NOT NULL
+        )
+    ''')
+
+    # Poblar con usuarios que ya tengan préstamos registrados
+    cursor.execute("""
+        INSERT OR IGNORE INTO usuarios (nombre, ci, fecha_registro)
+        SELECT DISTINCT usuario, ci, MIN(fecha_prestamo)
+        FROM prestamos
+        WHERE usuario IS NOT NULL AND ci IS NOT NULL AND TRIM(ci) != ''
+        GROUP BY ci
+    """)
     
     conn.commit()
     conn.close()

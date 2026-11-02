@@ -37,6 +37,24 @@ def init_db():
             FOREIGN KEY (autor_id) REFERENCES autores (id) ON DELETE SET NULL
         )
     ''')
-    
+
+    # Deduplicar autores existentes y reasignar libros al primer autor
+    cursor.execute('''
+        SELECT MIN(id) as keeper_id, LOWER(TRIM(nombre)) as norm_name
+        FROM autores
+        GROUP BY LOWER(TRIM(nombre))
+        HAVING COUNT(*) > 1
+    ''')
+    dup_groups = cursor.fetchall()
+    for row in dup_groups:
+        keeper_id = row['keeper_id']
+        norm_name = row['norm_name']
+        cursor.execute("SELECT id FROM autores WHERE LOWER(TRIM(nombre)) = ? AND id != ?", (norm_name, keeper_id))
+        dup_rows = cursor.fetchall()
+        for dup in dup_rows:
+            dup_id = dup['id']
+            cursor.execute("UPDATE libros SET autor_id = ? WHERE autor_id = ?", (keeper_id, dup_id))
+            cursor.execute("DELETE FROM autores WHERE id = ?", (dup_id,))
+
     conn.commit()
     conn.close()

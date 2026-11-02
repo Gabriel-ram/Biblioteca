@@ -1,53 +1,115 @@
-version: '3.8'
+# =============================================================================
+# docker-compose.yml — BASE
+# Carga siempre. Sin puertos de servicios (expuestos sólo en override).
+# No incluye gateway; éste se añade en prod.
+# =============================================================================
 
 services:
+
+  # ---------------------------------------------------------------------------
+  # CATÁLOGO — puerto interno 8001
+  # ---------------------------------------------------------------------------
   catalogo:
     build:
       context: ./catalogo
       dockerfile: Dockerfile
     container_name: catalogo_service
-    ports:
-      - "8001:8001"
+    env_file: .env
+    environment:
+      - TZ=${TZ:-America/La_Paz}
     volumes:
       - catalogo_data:/data
     networks:
       - biblioteca-network
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request, sys
+          try:
+            r = urllib.request.urlopen('http://localhost:8001/health', timeout=3)
+            sys.exit(0 if r.status == 200 else 1)
+          except Exception:
+            sys.exit(1)
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
+  # ---------------------------------------------------------------------------
+  # PRÉSTAMOS — puerto interno 8002
+  # ---------------------------------------------------------------------------
   prestamos:
     build:
       context: ./prestamos
       dockerfile: Dockerfile
     container_name: prestamos_service
-    ports:
-      - "8002:8002"
+    env_file: .env
     environment:
+      - TZ=${TZ:-America/La_Paz}
       - CATALOGO_URL=http://catalogo:8001
       - NOTIFICACIONES_URL=http://notificaciones:8003
-      - DIAS_PRESTAMO=1
-      - MULTA_POR_DIA=5
-      - DIAS_AVISO=2
     volumes:
       - prestamos_data:/data
     networks:
       - biblioteca-network
     depends_on:
-      - catalogo
-      - notificaciones
+      catalogo:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request, sys
+          try:
+            r = urllib.request.urlopen('http://localhost:8002/health', timeout=3)
+            sys.exit(0 if r.status == 200 else 1)
+          except Exception:
+            sys.exit(1)
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
+  # ---------------------------------------------------------------------------
+  # NOTIFICACIONES — puerto interno 8003
+  # Servicio satélite: su caída NO impide préstamos.
+  # ---------------------------------------------------------------------------
   notificaciones:
     build:
       context: ./notificaciones
       dockerfile: Dockerfile
     container_name: notificaciones_service
-    ports:
-      - "8003:8003"
+    env_file: .env
+    environment:
+      - TZ=${TZ:-America/La_Paz}
     volumes:
       - notificaciones_data:/data
     networks:
       - biblioteca-network
     restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request, sys
+          try:
+            r = urllib.request.urlopen('http://localhost:8003/health', timeout=3)
+            sys.exit(0 if r.status == 200 else 1)
+          except Exception:
+            sys.exit(1)
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
 networks:
   biblioteca-network:

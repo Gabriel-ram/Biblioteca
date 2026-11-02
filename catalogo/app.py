@@ -22,8 +22,19 @@ def crear_autor():
     if not nombre:
         return jsonify({"error": "El campo 'nombre' es obligatorio"}), 400
 
+    nombre = str(nombre).strip()
+    nacionalidad = str(nacionalidad).strip()
+
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM autores WHERE LOWER(TRIM(nombre)) = LOWER(?)", (nombre,))
+    existente = cursor.fetchone()
+    if existente:
+        autor = dict(existente)
+        conn.close()
+        return jsonify(autor), 200
+
     cursor.execute(
         "INSERT INTO autores (nombre, nacionalidad) VALUES (?, ?)",
         (nombre, nacionalidad)

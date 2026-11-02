@@ -16,8 +16,10 @@ env/
 data/
 
 # Environment Variables & Secret Configuration
+# .env.example SÍ se versiona; .env NUNCA
 .env
 .env.local
+.env.*.local
 
 # IDE & OS Specific
 .vscode/

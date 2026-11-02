@@ -1,0 +1,71 @@
+# =============================================================================
+# docker-compose.override.yml — DESARROLLO (se carga automáticamente)
+# Publica los puertos de los servicios en loopback para Postman y scripts.
+# Añade el gateway Caddy en modo local (Caddyfile.local, sin auth).
+# Activa el perfil "mail" para Mailpit si COMPOSE_PROFILES=mail en .env
+# =============================================================================
+
+services:
+
+  catalogo:
+    ports:
+      - "127.0.0.1:8001:8001"
+
+  prestamos:
+    ports:
+      - "127.0.0.1:8002:8002"
+
+  notificaciones:
+    ports:
+      - "127.0.0.1:8003:8003"
+
+  # ---------------------------------------------------------------------------
+  # GATEWAY CADDY — Modo A (local, sin autenticación)
+  # Sirve el front en / y enruta /api/* a los microservicios
+  # ---------------------------------------------------------------------------
+  gateway:
+    image: caddy:2-alpine
+    container_name: gateway_service
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:80"
+    volumes:
+      - ${CADDYFILE:-./gateway/Caddyfile.local}:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - biblioteca-network
+    depends_on:
+      catalogo:
+        condition: service_healthy
+      prestamos:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # MAILPIT — servidor SMTP de prueba (perfil "mail")
+  # Activar con COMPOSE_PROFILES=mail en .env (ya está por defecto)
+  # SMTP en mailpit:1025 (dentro de la red), UI en http://localhost:8025
+  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit_service
+    profiles:
+      - mail
+    ports:
+      - "127.0.0.1:8025:8025"   # Web UI
+      - "127.0.0.1:1025:1025"   # SMTP accesible desde el host
+    networks:
+      - biblioteca-network
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+

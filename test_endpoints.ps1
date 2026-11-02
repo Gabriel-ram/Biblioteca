@@ -85,7 +85,7 @@ Verify-Code 1 $libroDetalle.ejemplares_disponibles "Disponibilidad inicial es 1"
 Print-Title "3. PRESTAMO EXITOSO (DESCUENTO DE STOCK)"
 
 Print-Step "Registrando prestamo para 'usuario_prueba' (POST /prestamos)"
-$prestamoBody = @{ libro_id = $libroId; usuario = "usuario_prueba" } | ConvertTo-Json
+$prestamoBody = @{ libro_id = $libroId; usuario = "usuario_prueba"; ci = "12345678" } | ConvertTo-Json
 $prestamoResp = Invoke-RestMethod -Uri "$BasePrestamos/prestamos" -Method Post -ContentType "application/json" -Body $prestamoBody
 Write-Host "Prestamo registrado: $($prestamoResp | ConvertTo-Json -Compress)"
 $prestamoId = $prestamoResp.id
@@ -100,7 +100,7 @@ Print-Title "4. INTENTO DE PRESTAMO SIN STOCK (HTTP 409)"
 
 Print-Step "Intentando solicitar libro sin stock..."
 try {
-    $failBody = @{ libro_id = $libroId; usuario = "otro_usuario" } | ConvertTo-Json
+    $failBody = @{ libro_id = $libroId; usuario = "otro_usuario"; ci = "87654321" } | ConvertTo-Json
     Invoke-RestMethod -Uri "$BasePrestamos/prestamos" -Method Post -ContentType "application/json" -Body $failBody
     Write-Host "[ERROR] Debio retornar error 409" -ForegroundColor Red
 } catch {

@@ -3,614 +3,2157 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#3a3129">
-  <title>Biblioteca</title>
+  <meta name="theme-color" content="#0f172a">
+  <title>Sistema de Gestión Bibliotecaria</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      color-scheme: light;
-      --espresso: #3a3129;
-      --walnut: #7a6652;
-      --sand: #bfa98a;
-      --linen: #efe2cf;
-      --cream: #fff9ee;
-      --paper: #fffdf9;
-      --text: #352e27;
-      --muted: #857869;
-      --line: #e7dccb;
-      --success: #43664b;
-      --danger: #a64c3c;
-      --warning: #8c6827;
-      --shadow: 0 16px 38px #3a312910;
+      --bg-app: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #ffffff;
+      --border: #e2e8f0;
+      --border-subtle: #f1f5f9;
+      --border-hover: #cbd5e1;
+      
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-subtle: #94a3b8;
+      
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-subtle: #eef2ff;
+      --primary-border: #c7d2fe;
+      
+      --success: #10b981;
+      --success-subtle: #ecfdf5;
+      --success-text: #065f46;
+      
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --danger-subtle: #fef2f2;
+      --danger-text: #991b1b;
+      
+      --warning: #f59e0b;
+      --warning-subtle: #fffbeb;
+      --warning-text: #92400e;
+
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+      --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
     }
-    * { box-sizing: border-box; }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     [hidden] { display: none !important; }
+
     body {
-      margin: 0;
+      background-color: var(--bg-app);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
       min-height: 100vh;
-      background: var(--cream);
-      color: var(--text);
-      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
     }
-    button, input, select { font: inherit; }
-    button { cursor: pointer; }
-    .topbar {
+
+    /* SVG Utilities */
+    .icon {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+      stroke: currentColor;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      display: inline-block;
+      vertical-align: middle;
+      flex-shrink: 0;
+    }
+    .icon-lg { width: 20px; height: 20px; }
+    .icon-xl { width: 24px; height: 24px; }
+
+    /* Top Navigation Header */
+    .navbar {
+      background: #0f172a;
+      color: #f8fafc;
       position: sticky;
-      z-index: 5;
       top: 0;
-      background: var(--espresso);
-      color: var(--cream);
-      box-shadow: 0 4px 20px #211a1533;
+      z-index: 50;
+      border-bottom: 1px solid #1e293b;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     }
-    .nav-shell {
-      width: min(1200px, calc(100% - 44px));
-      min-height: 76px;
-      margin: auto;
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 68px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 28px;
+      gap: 20px;
     }
-    .brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
-    .brand-mark {
-      width: 40px;
-      height: 40px;
-      display: grid;
-      place-items: center;
-      border: 1px solid #bfa98a80;
-      border-radius: 12px;
-      color: var(--linen);
-      font-family: Georgia, serif;
-      font-size: 23px;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
     }
-    .brand-name { font: 600 20px/1.1 Georgia, "Times New Roman", serif; letter-spacing: .01em; }
-    .brand-caption { display: block; margin-top: 5px; color: #d3c3ad; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
-    .nav-links { display: flex; align-items: center; gap: 8px; }
-    .nav-link {
-      position: relative;
-      border: 0;
-      border-radius: 8px;
-      padding: 11px 14px;
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      box-shadow: 0 2px 10px rgba(79, 70, 229, 0.4);
+    }
+    .brand-info h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+    .brand-info span {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #1e293b;
+      padding: 4px;
+      border-radius: var(--radius-lg);
+    }
+    .nav-tab {
       background: transparent;
-      color: #e8ddcf;
-      font-size: 14px;
+      border: 0;
+      color: #94a3b8;
+      padding: 8px 16px;
+      font-size: 13px;
       font-weight: 600;
-      transition: background .18s ease, color .18s ease;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
     }
-    .nav-link:hover, .nav-link.active { background: #fff9ee18; color: #fff9ee; }
-    .nav-link.active::after { position: absolute; right: 14px; bottom: 3px; left: 14px; height: 2px; background: var(--sand); content: ""; }
-    .page { width: min(1200px, calc(100% - 44px)); margin: 0 auto; padding: 38px 0 64px; }
-    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 27px; }
-    .eyebrow { margin: 0 0 7px; color: var(--walnut); font-size: 11px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { margin-bottom: 8px; font: 500 clamp(30px, 4vw, 42px)/1.12 Georgia, "Times New Roman", serif; letter-spacing: -.025em; }
-    h2 { margin-bottom: 4px; font: 500 24px/1.25 Georgia, "Times New Roman", serif; }
-    h3 { margin-bottom: 6px; font-size: 15px; }
-    .subtitle { margin: 0; color: var(--muted); }
-    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-    .button {
+    .nav-tab:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .nav-tab.active {
+      background: #334155;
+      color: #ffffff;
+      box-shadow: var(--shadow-sm);
+    }
+    .nav-badge {
+      background: #475569;
+      color: #e2e8f0;
+      padding: 2px 7px;
+      border-radius: var(--radius-full);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .nav-tab.active .nav-badge {
+      background: var(--primary);
+      color: white;
+    }
+
+    .system-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.9); }
+    }
+
+    /* Main Container */
+    .main-content {
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+      flex: 1;
+    }
+
+    /* Stats Overview Cards */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .stat-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .stat-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .stat-icon-blue { background: #eff6ff; color: #2563eb; }
+    .stat-icon-indigo { background: #eef2ff; color: #4f46e5; }
+    .stat-icon-emerald { background: #ecfdf5; color: #059669; }
+    .stat-icon-amber { background: #fffbeb; color: #d97706; }
+
+    /* Page Header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .section-title-wrap h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.02em;
+    }
+    .section-title-wrap p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Buttons */
+    .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      min-height: 42px;
-      border: 1px solid var(--espresso);
-      border-radius: 8px;
-      padding: 9px 15px;
-      background: var(--espresso);
-      color: var(--cream);
+      padding: 9px 16px;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
       text-decoration: none;
-      transition: background .18s ease, border-color .18s ease, transform .18s ease;
     }
-    .button:hover { transform: translateY(-1px); border-color: var(--walnut); background: var(--walnut); }
-    .button:disabled { cursor: not-allowed; opacity: .58; transform: none; }
-    .button.secondary { border-color: var(--line); background: var(--paper); color: var(--espresso); }
-    .button.secondary:hover { border-color: var(--sand); background: var(--linen); }
-    .button.ghost { border-color: transparent; background: transparent; color: var(--walnut); }
-    .button.ghost:hover { background: var(--linen); }
-    .button.danger { border-color: var(--danger); background: var(--danger); }
-    .button.danger:hover { background: #853b30; }
-    .icon-button { width: 42px; padding: 0; font-size: 18px; }
-    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
-    .search { position: relative; width: min(100%, 360px); }
-    .search input, .field input, .field select {
-      width: 100%;
-      min-height: 44px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 10px 13px;
-      outline: none;
-      background: var(--paper);
-      color: var(--text);
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
     }
-    .search input:focus, .field input:focus, .field select:focus { border-color: var(--walnut); box-shadow: 0 0 0 3px #bfa98a33; }
-    .search input { padding-left: 40px; }
-    .search-icon { position: absolute; top: 10px; left: 13px; color: var(--muted); }
-    .book-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-    .book-card {
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+    }
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-main);
+      border-color: var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-app);
+      border-color: var(--border-hover);
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: var(--danger-hover);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(0,0,0,0.04);
+      color: var(--text-main);
+    }
+    .btn-ghost-danger {
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .btn-ghost-danger:hover:not(:disabled) {
+      background: var(--danger-subtle);
+      color: var(--danger);
+    }
+    .btn-sm {
+      padding: 6px 11px;
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+    }
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: var(--radius-md);
+    }
+
+    /* Filters & Search Toolbar */
+    .toolbar-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px 16px;
       display: flex;
-      min-height: 290px;
-      flex-direction: column;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--paper);
-      box-shadow: 0 5px 18px #3a312908;
-      transition: transform .2s ease, box-shadow .2s ease;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow-sm);
+      flex-wrap: wrap;
     }
-    .book-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
-    .book-cover {
+    .search-box {
       position: relative;
+      flex: 1;
+      min-width: 260px;
+    }
+    .search-box svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-subtle);
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      height: 40px;
+      padding: 8px 14px 8px 38px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-app);
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.15s ease;
+    }
+    .search-input:focus {
+      border-color: var(--primary);
+      background: var(--bg-surface);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+    .filter-pills {
       display: flex;
-      min-height: 130px;
-      align-items: end;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-pill {
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      padding: 6px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .filter-pill:hover {
+      border-color: var(--border-hover);
+      color: var(--text-main);
+    }
+    .filter-pill.active {
+      background: #0f172a;
+      color: white;
+      border-color: #0f172a;
+    }
+
+    /* Books Grid */
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .book-item-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       overflow: hidden;
-      padding: 19px;
-      background: linear-gradient(145deg, #7a6652, #3a3129);
-      color: var(--cream);
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
     }
-    .book-cover::before, .book-cover::after { position: absolute; border: 1px solid #fff9ee26; content: ""; transform: rotate(28deg); }
-    .book-cover::before { top: -60px; right: -24px; width: 155px; height: 200px; border-radius: 55% 45% 45% 55%; }
-    .book-cover::after { top: -39px; right: 17px; width: 100px; height: 155px; border-radius: 52% 48% 46% 54%; }
-    .cover-title { position: relative; z-index: 1; max-width: 90%; font: 500 19px/1.18 Georgia, "Times New Roman", serif; text-shadow: 0 1px 5px #0005; }
-    .book-details { display: flex; flex: 1; flex-direction: column; padding: 16px; }
-    .book-title { display: none; }
-    .book-author { margin: 0 0 13px; color: var(--muted); font-size: 13px; }
-    .book-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-    .status-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 99px; padding: 5px 9px; background: #eaf0e7; color: var(--success); font-size: 11px; font-weight: 750; white-space: nowrap; }
-    .status-pill::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
-    .status-pill.out { background: #f7e9e5; color: var(--danger); }
-    .status-pill.neutral { background: var(--linen); color: var(--walnut); }
-    .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 5px 18px #3a312908; }
-    .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 19px 21px; border-bottom: 1px solid var(--line); }
-    .panel-body { padding: 21px; }
-    .loan-layout { display: grid; grid-template-columns: minmax(260px, .75fr) minmax(0, 1.65fr); align-items: start; gap: 20px; }
-    .loan-form { display: grid; gap: 16px; }
-    .field { display: grid; gap: 7px; }
-    .field label { color: var(--walnut); font-size: 12px; font-weight: 750; }
-    .field input::placeholder { color: #a69b8c; }
-    .loan-form .button { width: 100%; margin-top: 3px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; text-align: left; }
-    th { padding: 11px 13px; background: #f8f2e9; color: var(--walnut); font-size: 10px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; white-space: nowrap; }
-    td { padding: 14px 13px; border-bottom: 1px solid #eee6da; color: var(--text); font-size: 13px; vertical-align: middle; }
-    tbody tr:last-child td { border-bottom: 0; }
-    tbody tr:hover { background: #fffaf3; }
-    .primary-cell { font-weight: 700; }
-    .secondary-cell { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 450; }
-    .empty-state { padding: 38px 18px; color: var(--muted); text-align: center; }
-    .empty-icon { display: block; margin-bottom: 10px; color: var(--sand); font: 32px Georgia, serif; }
-    .notification-list { display: grid; gap: 10px; }
-    .notification-item { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: start; gap: 13px; border: 1px solid var(--line); border-radius: 10px; padding: 15px; background: var(--paper); }
-    .notification-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--linen); color: var(--walnut); font-size: 17px; }
-    .notification-type { margin: 0 0 3px; color: var(--walnut); font-size: 10px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
-    .notification-message { margin: 0; font-size: 13px; }
-    .notification-detail { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
-    .notice { position: fixed; z-index: 15; top: 92px; right: 24px; display: flex; width: min(420px, calc(100% - 32px)); align-items: flex-start; gap: 11px; border: 1px solid var(--line); border-left: 4px solid var(--success); border-radius: 10px; padding: 14px 15px; background: var(--paper); box-shadow: 0 14px 38px #2c211c24; opacity: 0; pointer-events: none; transform: translateY(-8px); transition: opacity .2s ease, transform .2s ease; }
-    .notice.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
-    .notice.error { border-left-color: var(--danger); }
-    .notice.warn { border-left-color: var(--warning); }
-    .notice-mark { color: var(--success); font-weight: 900; }
-    .notice.error .notice-mark { color: var(--danger); }
-    .notice.warn .notice-mark { color: var(--warning); }
-    .notice-text { flex: 1; font-size: 13px; }
-    .notice-close { border: 0; padding: 0 2px; background: transparent; color: var(--muted); font-size: 19px; line-height: 1; }
-    .modal { width: min(440px, calc(100% - 30px)); border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--paper); color: var(--text); box-shadow: 0 24px 80px #1d171280; }
-    .modal::backdrop { background: #211a15a6; backdrop-filter: blur(3px); }
-    .modal-content { padding: 25px; }
-    .modal-mark { width: 46px; height: 46px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 50%; background: var(--linen); color: var(--walnut); font-size: 21px; }
-    .modal h2 { margin-bottom: 8px; font-size: 23px; }
-    .modal p { margin-bottom: 21px; color: var(--muted); font-size: 14px; }
-    .modal-actions { display: flex; justify-content: end; gap: 9px; }
-    .mobile-menu { display: none; }
-    .footer { margin-top: 45px; border-top: 1px solid var(--line); padding-top: 18px; color: var(--muted); font-size: 11px; text-align: center; }
-    @media (max-width: 1000px) { .book-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-    @media (max-width: 760px) {
-      .nav-shell { width: min(100% - 30px, 1200px); min-height: 68px; flex-wrap: wrap; gap: 0; padding: 12px 0; }
-      .nav-links { order: 3; width: 100%; justify-content: space-between; gap: 3px; padding-top: 10px; }
-      .nav-link { flex: 1; padding: 9px 5px; font-size: 12px; }
-      .nav-link.active::after { right: 8px; left: 8px; }
-      .page { width: min(100% - 30px, 1200px); padding-top: 28px; }
-      .page-heading { align-items: flex-start; flex-direction: column; }
-      .book-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-      .book-card { min-height: 260px; }
-      .book-cover { min-height: 115px; padding: 14px; }
-      .book-details { padding: 13px; }
-      .book-meta { align-items: flex-start; flex-direction: column; }
-      .loan-layout { grid-template-columns: 1fr; }
-      .toolbar { align-items: stretch; flex-direction: column; }
-      .search { width: 100%; }
-      .notification-item { grid-template-columns: 38px minmax(0, 1fr); }
-      .notification-item .status-pill { grid-column: 2; justify-self: start; }
+    .book-item-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+      border-color: #cbd5e1;
     }
-    @media (max-width: 420px) { .book-grid { grid-template-columns: 1fr; } .book-card { min-height: 245px; } .book-cover { min-height: 125px; } .actions { width: 100%; } .actions .button { flex: 1; } }
-    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+    .book-cover-header {
+      height: 120px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      color: white;
+    }
+    .book-cover-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      z-index: 2;
+    }
+    .book-id-badge {
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(4px);
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .book-cover-title {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+      position: relative;
+      z-index: 2;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .book-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 12px;
+    }
+    .book-author-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .stock-container {
+      background: var(--bg-app);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stock-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .stock-bar-track {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+    .stock-bar-fill {
+      height: 100%;
+      border-radius: var(--radius-full);
+      transition: width 0.3s ease;
+    }
+    .book-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: auto;
+      padding-top: 8px;
+    }
+    .book-card-actions .btn-loan {
+      flex: 1;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-success { background: var(--success-subtle); color: var(--success-text); }
+    .badge-danger { background: var(--danger-subtle); color: var(--danger-text); }
+    .badge-warning { background: var(--warning-subtle); color: var(--warning-text); }
+    .badge-neutral { background: #f1f5f9; color: #475569; }
+
+    /* Layout Columns (Panels) */
+    .dual-panel {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .dual-panel { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .nav-container { height: auto; padding: 12px 16px; flex-wrap: wrap; }
+      .nav-tabs { width: 100%; order: 3; justify-content: space-between; }
+    }
+
+    .panel-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+    .panel-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .panel-card-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .panel-card-header p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .panel-card-body {
+      padding: 20px;
+    }
+
+    /* Forms */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .form-control {
+      width: 100%;
+      height: 42px;
+      padding: 8px 12px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-main);
+      outline: none;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+    .form-help {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Modern Tables */
+    .table-container {
+      overflow-x: auto;
+    }
+    .modern-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    .modern-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .modern-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+    .modern-table tr:hover td {
+      background: #f8fafc;
+    }
+    .modern-table tr:last-child td {
+      border-bottom: none;
+    }
+    .user-avatar-tag {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e0e7ff;
+      color: #3730a3;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    /* Notification Feed */
+    .notif-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .notif-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      box-shadow: var(--shadow-sm);
+    }
+    .notif-icon-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .notif-body {
+      flex: 1;
+    }
+    .notif-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 3px;
+    }
+    .notif-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .notif-footer {
+      font-size: 11px;
+      color: var(--text-subtle);
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Floating Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      pointer-events: auto;
+      background: #0f172a;
+      color: white;
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      box-shadow: var(--shadow-xl);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 300px;
+      max-width: 420px;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      border-left: 4px solid var(--primary);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.error { border-left-color: var(--danger); }
+    .toast.warn { border-left-color: var(--warning); }
+    .toast-msg {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .toast-close {
+      background: transparent;
+      border: 0;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+    }
+    .toast-close:hover { color: white; }
+
+    /* Modals */
+    .modal-dialog {
+      width: min(480px, calc(100% - 32px));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 0;
+      background: var(--bg-surface);
+      color: var(--text-main);
+      box-shadow: var(--shadow-xl);
+      margin: auto;
+    }
+    .modal-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+    }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h3 {
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .modal-body {
+      padding: 24px;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      border-bottom-left-radius: var(--radius-lg);
+      border-bottom-right-radius: var(--radius-lg);
+    }
+
+    /* Empty state */
+    .empty-box {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .empty-icon-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: var(--text-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .empty-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .empty-subtitle {
+      font-size: 13px;
+      max-width: 320px;
+    }
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="nav-shell">
-      <a class="brand" href="#libros" data-view-link="libros" aria-label="Biblioteca, inicio">
-        <span class="brand-mark" aria-hidden="true">B</span>
-        <span><span class="brand-name">Biblioteca</span><span class="brand-caption">Lecturas para descubrir</span></span>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a class="brand" href="#libros" data-view-link="libros">
+        <div class="brand-logo">
+          <svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </div>
+        <div class="brand-info">
+          <h1>Biblioteca Digital</h1>
+          <span>Portal de Gestión</span>
+        </div>
       </a>
-      <nav class="nav-links" aria-label="Navegación principal">
-        <button class="nav-link active" type="button" data-view-link="libros" aria-current="page">Libros</button>
-        <button class="nav-link" type="button" data-view-link="prestamos">Préstamos</button>
-        <button class="nav-link" type="button" data-view-link="notificaciones">Notificaciones</button>
+
+      <!-- Navigation tabs -->
+      <nav class="nav-tabs" aria-label="Secciones">
+        <button class="nav-tab active" type="button" data-view-link="libros" id="tab-libros">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span>Catálogo</span>
+        </button>
+        <button class="nav-tab" type="button" data-view-link="prestamos" id="tab-prestamos">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+          <span>Circulación</span>
+          <span class="nav-badge" id="nav-active-loans-count">0</span>
+        </button>
+        <button class="nav-tab" type="button" data-view-link="usuarios" id="tab-usuarios">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Lectores</span>
+        </button>
+        <button class="nav-tab" type="button" data-view-link="notificaciones" id="tab-notificaciones">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>Alertas</span>
+        </button>
       </nav>
+
+      <div class="system-status">
+        <span class="status-dot"></span>
+        <span>En línea</span>
+      </div>
     </div>
   </header>
 
-  <main class="page">
-    <div id="notice" class="notice" role="status" aria-live="polite">
-      <span class="notice-mark" aria-hidden="true">●</span>
-      <span id="notice-text" class="notice-text"></span>
-      <button id="notice-close" class="notice-close" type="button" aria-label="Cerrar aviso">×</button>
+  <!-- Main App Content -->
+  <main class="main-content">
+
+    <!-- KPI Metric Cards -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Títulos Registrados</div>
+          <div class="stat-val" id="stat-total-books">0</div>
+        </div>
+        <div class="stat-icon-wrap stat-icon-indigo">
+          <svg class="icon icon-xl" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Ejemplares Disponibles</div>
+          <div class="stat-val" id="stat-avail-copies">0</div>
+        </div>
+        <div class="stat-icon-wrap stat-icon-emerald">
+          <svg class="icon icon-xl" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Préstamos en Curso</div>
+          <div class="stat-val" id="stat-active-loans">0</div>
+        </div>
+        <div class="stat-icon-wrap stat-icon-amber">
+          <svg class="icon icon-xl" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div>
+          <div class="stat-label">Lectores Activos</div>
+          <div class="stat-val" id="stat-total-users">0</div>
+        </div>
+        <div class="stat-icon-wrap stat-icon-blue">
+          <svg class="icon icon-xl" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+      </div>
     </div>
 
-    <section class="view" id="view-libros" aria-labelledby="books-heading">
-      <div class="page-heading">
-        <div>
-          <p class="eyebrow">Catálogo</p>
-          <h1 id="books-heading">Encuentra tu próxima lectura</h1>
-          <p class="subtitle">Explora nuestra colección y consulta la disponibilidad.</p>
+    <!-- VISTA 1: CATÁLOGO DE LIBROS -->
+    <section class="view" id="view-libros">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Catálogo de Libros</h2>
+          <p>Administra la disponibilidad, títulos y autores de la colección.</p>
         </div>
-        <div class="actions">
-          <span id="book-count" class="status-pill neutral">Cargando libros</span>
-          <button class="button secondary icon-button" type="button" data-refresh aria-label="Actualizar catálogo" title="Actualizar">↻</button>
+        <div class="header-actions">
+          <button id="btn-add-author" class="btn btn-secondary" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Nuevo autor
+          </button>
+          <button id="btn-add-book" class="btn btn-primary" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Agregar libro
+          </button>
+          <button class="btn btn-secondary btn-icon" type="button" data-refresh title="Actualizar datos">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
         </div>
       </div>
-      <div class="toolbar">
-        <label class="search">
-          <span class="search-icon" aria-hidden="true">⌕</span>
-          <input id="book-search" type="search" placeholder="Buscar por título o autor…" aria-label="Buscar libros">
-        </label>
-        <p id="catalog-status" class="subtitle" role="status">Actualizando catálogo…</p>
+
+      <!-- Toolbar de búsqueda y filtros -->
+      <div class="toolbar-card">
+        <div class="search-box">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input id="book-search" class="search-input" type="search" placeholder="Buscar por título, autor o identificador…">
+        </div>
+        <div class="filter-pills">
+          <button class="filter-pill active" data-filter="all">Todos (<span id="count-filter-all">0</span>)</button>
+          <button class="filter-pill" data-filter="available">Disponibles (<span id="count-filter-avail">0</span>)</button>
+          <button class="filter-pill" data-filter="out">Agotados (<span id="count-filter-out">0</span>)</button>
+        </div>
       </div>
-      <div id="books-grid" class="book-grid"></div>
+
+      <!-- Cuadrícula de libros -->
+      <div id="books-grid" class="books-grid"></div>
     </section>
 
-    <section class="view" id="view-prestamos" aria-labelledby="loans-heading" hidden>
-      <div class="page-heading">
-        <div>
-          <p class="eyebrow">Circulación</p>
-          <h1 id="loans-heading">Préstamos y devoluciones</h1>
-          <p class="subtitle">Registra nuevos préstamos y administra los ejemplares en circulación.</p>
+    <!-- VISTA 2: CIRCULACIÓN (PRÉSTAMOS Y DEVOLUCIONES) -->
+    <section class="view" id="view-prestamos" hidden>
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Circulación y Devoluciones</h2>
+          <p>Registra salidas de ejemplares y gestiona retornos con cálculo de moras.</p>
         </div>
-        <button class="button secondary icon-button" type="button" data-refresh aria-label="Actualizar préstamos" title="Actualizar">↻</button>
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-icon" type="button" data-refresh title="Actualizar datos">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+        </div>
       </div>
-      <div class="loan-layout">
-        <section class="panel" aria-labelledby="new-loan-heading">
-          <div class="panel-header"><div><p class="eyebrow">Nuevo movimiento</p><h2 id="new-loan-heading">Registrar préstamo</h2></div></div>
-          <div class="panel-body">
-            <form id="loan-form" class="loan-form">
-              <div class="field">
-                <label for="user-input">Nombre de usuario</label>
-                <input id="user-input" name="usuario" maxlength="120" placeholder="Ej. ana.lopez" autocomplete="name" required>
-              </div>
-              <div class="field">
-                <label for="ci-input">CI</label>
-                <input id="ci-input" name="ci" type="text" inputmode="numeric" autocomplete="off" maxlength="8" pattern="[0-9]{1,8}" placeholder="Hasta 8 dígitos" aria-describedby="ci-help" required>
-                <small id="ci-help" class="subtitle">Solo números, máximo 8 dígitos.</small>
-              </div>
-              <div class="field">
-                <label for="book-select">Libro disponible</label>
-                <select id="book-select" name="libro_id" required><option value="">Selecciona un libro</option></select>
-              </div>
-              <button class="button" type="submit">Confirmar préstamo <span aria-hidden="true">→</span></button>
-            </form>
-          </div>
-        </section>
 
-        <section class="panel" aria-labelledby="loan-list-heading">
-          <div class="panel-header">
-            <div><p class="eyebrow">Actividad</p><h2 id="loan-list-heading">Historial de préstamos</h2></div>
-            <span id="loan-count" class="status-pill neutral">0 registros</span>
+      <div class="dual-panel">
+        <!-- Columna Izquierda: Formularios -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+
+          <!-- Panel: Registrar Préstamo -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <div>
+                <h3>Nuevo Préstamo</h3>
+                <p>Salida de ejemplar para un lector</p>
+              </div>
+              <span class="badge badge-neutral">Paso 1</span>
+            </div>
+            <div class="panel-card-body">
+              <form id="loan-form">
+                <div class="form-group">
+                  <div class="form-label">
+                    <span>Seleccionar Lector</span>
+                    <button type="button" id="btn-quick-new-user" class="btn btn-ghost btn-sm" style="color: var(--primary);">+ Registrar</button>
+                  </div>
+                  <select id="loan-user-select" class="form-control">
+                    <option value="">Buscar en lectores registrados…</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="user-input">Nombre del Lector *</label>
+                  <input id="user-input" class="form-control" name="usuario" maxlength="120" placeholder="Ej. Ana Morales" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="ci-input">Cédula de Identidad (CI) *</label>
+                  <input id="ci-input" class="form-control" name="ci" type="text" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" placeholder="Hasta 8 dígitos" required>
+                  <span class="form-help">Solo dígitos numéricos sin letras ni símbolos.</span>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="book-select">Libro a Prestar *</label>
+                  <select id="book-select" class="form-control" name="libro_id" required>
+                    <option value="">Selecciona un título disponible…</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary" type="submit" style="width: 100%; margin-top: 6px;">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Confirmar Préstamo
+                </button>
+              </form>
+            </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Usuario</th><th>CI</th><th>Libro</th><th>Fecha préstamo</th><th>Fecha límite</th><th>Estado</th><th></th></tr></thead>
+
+          <!-- Panel: Registrar Devolución -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <div>
+                <h3>Registrar Devolución</h3>
+                <p>Retorno de ejemplar prestado</p>
+              </div>
+              <span class="badge badge-neutral">Retorno</span>
+            </div>
+            <div class="panel-card-body">
+              <form id="return-form-direct">
+                <div class="form-group">
+                  <label class="form-label" for="return-loan-select">Préstamo Activo *</label>
+                  <select id="return-loan-select" class="form-control" required>
+                    <option value="">Cargando préstamos activos…</option>
+                  </select>
+                  <span class="form-help">Repone automáticamente la disponibilidad en el inventario.</span>
+                </div>
+                <button class="btn btn-secondary" type="submit" id="btn-confirm-return-direct" style="width: 100%; font-weight: 700;">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                  Procesar Devolución
+                </button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Columna Derecha: Historial de Préstamos -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <div>
+              <h3>Historial de Movimientos</h3>
+              <p>Registro histórico de préstamos activos y concluidos</p>
+            </div>
+            <span id="loan-count" class="badge badge-neutral">0 registros</span>
+          </div>
+          <div class="table-container">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Lector</th>
+                  <th>CI</th>
+                  <th>Libro</th>
+                  <th>Fecha Préstamo</th>
+                  <th>Fecha Límite</th>
+                  <th>Estado</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
               <tbody id="loans-body"></tbody>
             </table>
           </div>
-        </section>
+        </div>
       </div>
     </section>
 
-    <section class="view" id="view-notificaciones" aria-labelledby="notifications-heading" hidden>
-      <div class="page-heading">
-        <div>
-          <p class="eyebrow">Avisos</p>
-          <h1 id="notifications-heading">Notificaciones</h1>
-          <p class="subtitle">Recordatorios de vencimiento y avisos relacionados con los préstamos.</p>
+    <!-- VISTA 3: LECTORES (USUARIOS) -->
+    <section class="view" id="view-usuarios" hidden>
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Directorio de Lectores</h2>
+          <p>Registro de usuarios autorizados para solicitar préstamos de biblioteca.</p>
         </div>
-        <div class="actions">
-          <button id="review-button" class="button" type="button"><span aria-hidden="true">◷</span> Revisar vencimientos</button>
-          <button class="button secondary icon-button" type="button" data-refresh aria-label="Actualizar notificaciones" title="Actualizar">↻</button>
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-icon" type="button" data-refresh title="Actualizar datos">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
         </div>
       </div>
-      <section class="panel" aria-labelledby="notification-history-heading">
-        <div class="panel-header">
-          <div><p class="eyebrow">Registro</p><h2 id="notification-history-heading">Historial reciente</h2></div>
-          <span id="notification-count" class="status-pill neutral">0 avisos</span>
+
+      <div class="dual-panel">
+        <!-- Registrar Usuario -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <div>
+              <h3>Registrar Lector</h3>
+              <p>Ingresa los datos personales del usuario</p>
+            </div>
+          </div>
+          <div class="panel-card-body">
+            <form id="main-user-form">
+              <div class="form-group">
+                <label class="form-label" for="main-user-name">Nombre y Apellido *</label>
+                <input id="main-user-name" class="form-control" name="nombre" maxlength="120" placeholder="Ej. Carlos Mamani" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="main-user-ci">Cédula de Identidad (CI) *</label>
+                <input id="main-user-ci" class="form-control" name="ci" type="text" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" placeholder="Ej. 7654321" required>
+                <span class="form-help">Máximo 8 dígitos, único para cada lector.</span>
+              </div>
+              <button class="btn btn-primary" type="submit" style="width: 100%;">
+                <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Guardar Lector
+              </button>
+            </form>
+          </div>
         </div>
-        <div class="panel-body"><div id="notifications-list" class="notification-list"></div></div>
-      </section>
+
+        <!-- Directorio de Usuarios -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <div>
+              <h3>Lectores Registrados</h3>
+              <p>Listado de socios y su estado actual</p>
+            </div>
+            <span id="user-count" class="badge badge-neutral">0 lectores</span>
+          </div>
+          <div class="table-container">
+            <table class="modern-table">
+              <thead>
+                <tr>
+                  <th>Lector</th>
+                  <th>Cédula (CI)</th>
+                  <th>Alta en Sistema</th>
+                  <th>Préstamos Activos</th>
+                  <th style="text-align: right;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="users-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <footer class="footer">Biblioteca · Gestión de catálogo y préstamos</footer>
+    <!-- VISTA 4: NOTIFICACIONES -->
+    <section class="view" id="view-notificaciones" hidden>
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h2>Centro de Alertas y Notificaciones</h2>
+          <p>Avisos automatizados de moras, recordatorios y revisiones periódicas.</p>
+        </div>
+        <div class="header-actions">
+          <button id="review-button" class="btn btn-primary" type="button">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Revisar vencimientos
+          </button>
+          <button class="btn btn-secondary btn-icon" type="button" data-refresh title="Actualizar datos">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="panel-card" style="max-width: 860px; margin: 0 auto;">
+        <div class="panel-card-header">
+          <div>
+            <h3>Bitácora de Eventos</h3>
+            <p>Registro ordenado cronológicamente</p>
+          </div>
+          <span id="notification-count" class="badge badge-neutral">0 alertas</span>
+        </div>
+        <div class="panel-card-body">
+          <div id="notifications-list" class="notif-feed"></div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
-  <dialog id="return-modal" class="modal" aria-labelledby="return-title" aria-describedby="return-description">
-    <div class="modal-content">
-      <span class="modal-mark" aria-hidden="true">↶</span>
-      <h2 id="return-title">Confirmar devolución</h2>
-      <p id="return-description">¿Deseas registrar la devolución de este libro? Se actualizará la disponibilidad en el catálogo.</p>
-      <div class="modal-actions">
-        <button id="cancel-return" class="button secondary" type="button">Cancelar</button>
-        <button id="confirm-return" class="button" type="button">Sí, devolver</button>
+  <!-- Toast Notificaciones Flotantes -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- MODAL: Crear / Modificar Libro -->
+  <dialog id="book-modal" class="modal-dialog">
+    <div class="modal-header">
+      <h3 id="book-modal-title">Agregar Nuevo Libro</h3>
+      <button type="button" class="btn btn-ghost btn-icon" id="close-book-modal">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <form id="book-form">
+      <div class="modal-body">
+        <input type="hidden" id="book-form-id" name="id">
+        <div class="form-group">
+          <label class="form-label" for="book-form-title">Título de la Obra *</label>
+          <input id="book-form-title" class="form-control" name="titulo" maxlength="200" placeholder="Ej. Cien Años de Soledad" required>
+        </div>
+        <div class="form-group">
+          <div class="form-label">
+            <span>Autor de la Obra</span>
+            <button type="button" id="btn-quick-new-author" class="btn btn-ghost btn-sm" style="color: var(--primary);">+ Crear autor</button>
+          </div>
+          <select id="book-form-author" class="form-control" name="autor_id">
+            <option value="">Selecciona un autor existente…</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="book-form-total">Ejemplares Totales *</label>
+          <input id="book-form-total" class="form-control" name="ejemplares_totales" type="number" min="1" value="1" required>
+        </div>
+        <div class="form-group" id="field-book-disponibles" style="display: none;">
+          <label class="form-label" for="book-form-disponibles">Ejemplares Disponibles Actualmente *</label>
+          <input id="book-form-disponibles" class="form-control" name="ejemplares_disponibles" type="number" min="0" value="1">
+          <span class="form-help">Unidades libres para préstamo de inmediato.</span>
+        </div>
       </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-book" class="btn btn-secondary">Cancelar</button>
+        <button type="submit" id="save-book" class="btn btn-primary">Guardar Libro</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- MODAL: Crear Autor -->
+  <dialog id="author-modal" class="modal-dialog">
+    <div class="modal-header">
+      <h3 id="author-modal-title">Registrar Autor</h3>
+      <button type="button" class="btn btn-ghost btn-icon" id="close-author-modal">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <form id="author-form">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="author-form-name">Nombre Completo *</label>
+          <input id="author-form-name" class="form-control" name="nombre" maxlength="150" placeholder="Ej. Gabriel García Márquez" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="author-form-nationality">Nacionalidad</label>
+          <input id="author-form-nationality" class="form-control" name="nacionalidad" maxlength="100" placeholder="Ej. Colombiana">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-author" class="btn btn-secondary">Cancelar</button>
+        <button type="submit" id="save-author" class="btn btn-primary">Guardar Autor</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- MODAL: Crear Usuario Rápido -->
+  <dialog id="user-modal" class="modal-dialog">
+    <div class="modal-header">
+      <h3>Registrar Lector</h3>
+      <button type="button" class="btn btn-ghost btn-icon" id="close-user-modal">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <form id="quick-user-form">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="quick-user-name">Nombre y Apellidos *</label>
+          <input id="quick-user-name" class="form-control" name="nombre" maxlength="120" placeholder="Ej. Mario Vargas Llosa" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="quick-user-ci">Cédula de Identidad (CI) *</label>
+          <input id="quick-user-ci" class="form-control" name="ci" type="text" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" placeholder="Ej. 12345678" required>
+          <span class="form-help">Máximo 8 dígitos numéricos.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-quick-user" class="btn btn-secondary">Cancelar</button>
+        <button type="submit" id="save-quick-user" class="btn btn-primary">Registrar Lector</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- MODAL: Confirmar Devolución -->
+  <dialog id="return-modal" class="modal-dialog">
+    <div class="modal-header">
+      <h3 id="return-title">Confirmar Devolución</h3>
+      <button type="button" class="btn btn-ghost btn-icon" id="close-return-modal">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="return-description" style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">
+        ¿Deseas registrar la devolución de este ejemplar? Se reincorporará el stock disponible en el catálogo de inmediato.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button id="cancel-return" class="btn btn-secondary" type="button">Cancelar</button>
+      <button id="confirm-return" class="btn btn-primary" type="button">Confirmar Devolución</button>
     </div>
   </dialog>
 
+  <!-- MODAL: Confirmar Eliminación Genérica -->
+  <dialog id="delete-modal" class="modal-dialog">
+    <div class="modal-header">
+      <h3 id="delete-title">Confirmar Eliminación</h3>
+      <button type="button" class="btn btn-ghost btn-icon" id="close-delete-modal">
+        <svg class="icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p id="delete-desc" style="font-size: 14px; color: var(--text-muted); line-height: 1.5;">
+        Esta acción es irreversible y eliminará el registro del sistema.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button id="cancel-delete" class="btn btn-secondary" type="button">Cancelar</button>
+      <button id="confirm-delete" class="btn btn-danger" type="button">Eliminar Definitivamente</button>
+    </div>
+  </dialog>
+
+  <!-- Application Logic -->
   <script>
-    const notice = document.getElementById('notice');
-    const noticeText = document.getElementById('notice-text');
-    const booksSearch = document.getElementById('book-search');
-    const returnModal = document.getElementById('return-modal');
+    // State
     let allBooks = [];
     let allAuthors = [];
+    let allUsers = [];
     let activeLoans = [];
-    let notificationDataAvailable = true;
-    let noticeTimer;
+    let allLoans = [];
+    let currentFilter = 'all';
     let pendingReturnId = null;
+    let pendingDelete = null;
 
-    function showNotice(message, type = 'success', duration = 4200) {
-      window.clearTimeout(noticeTimer);
-      noticeText.textContent = message;
-      notice.className = `notice show${type === 'success' ? '' : ` ${type}`}`;
-      if (duration > 0) noticeTimer = window.setTimeout(hideNotice, duration);
+    // Gradient Presets for dynamic book covers
+    const COVER_GRADIENTS = [
+      'linear-gradient(135deg, #1e1b4b, #312e81)',
+      'linear-gradient(135deg, #022c22, #065f46)',
+      'linear-gradient(135deg, #311042, #581c87)',
+      'linear-gradient(135deg, #451a03, #78350f)',
+      'linear-gradient(135deg, #0c4a6e, #0369a1)',
+      'linear-gradient(135deg, #172554, #1d4ed8)',
+      'linear-gradient(135deg, #18181b, #27272a)'
+    ];
+
+    function getCoverGradient(id) {
+      return COVER_GRADIENTS[Math.abs(Number(id || 0)) % COVER_GRADIENTS.length];
     }
 
-    function hideNotice() {
-      notice.classList.remove('show');
+    // Modern Toast Notification
+    function showToast(message, type = 'success', duration = 4000) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+
+      let iconHtml = '<svg class="icon icon-lg" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      if (type === 'error') {
+        iconHtml = '<svg class="icon icon-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+      } else if (type === 'warn') {
+        iconHtml = '<svg class="icon icon-lg" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+      }
+
+      toast.innerHTML = `
+        <div style="color: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#f59e0b'}; display: flex;">
+          ${iconHtml}
+        </div>
+        <div class="toast-msg">${message}</div>
+        <button class="toast-close" type="button" aria-label="Cerrar">&times;</button>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+
+      const removeToast = () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 250);
+      };
+
+      toast.querySelector('.toast-close').addEventListener('click', removeToast);
+      if (duration > 0) setTimeout(removeToast, duration);
     }
 
     function authorName(authorId) {
       const author = allAuthors.find((item) => Number(item.id) === Number(authorId));
-      return author ? author.nombre : 'Autor no especificado';
+      return author ? author.nombre : 'Autor Desconocido';
     }
 
+    // Populate Authors without duplicates
+    function populateAuthorSelects() {
+      const bookSelect = document.getElementById('book-form-author');
+      const currentVal = bookSelect.value;
+      bookSelect.replaceChildren(new Option('Selecciona un autor existente…', ''));
+      
+      const seen = new Set();
+      allAuthors.forEach(author => {
+        const norm = (author.nombre || '').trim().toLowerCase();
+        if (norm && !seen.has(norm)) {
+          seen.add(norm);
+          const label = author.nombre + (author.nacionalidad ? ` (${author.nacionalidad})` : '');
+          bookSelect.add(new Option(label, author.id));
+        }
+      });
+      if (currentVal) bookSelect.value = currentVal;
+    }
+
+    function populateUserSelects() {
+      const userSelect = document.getElementById('loan-user-select');
+      const currentVal = userSelect.value;
+      userSelect.replaceChildren(new Option('Buscar en lectores registrados…', ''));
+      allUsers.forEach(u => {
+        userSelect.add(new Option(`${u.nombre} (CI: ${u.ci})`, u.ci));
+      });
+      if (currentVal) userSelect.value = currentVal;
+    }
+
+    function populateActiveLoansReturnSelect() {
+      const returnSelect = document.getElementById('return-loan-select');
+      returnSelect.replaceChildren();
+      if (!activeLoans.length) {
+        const opt = new Option('No hay préstamos activos para devolver', '');
+        opt.disabled = true;
+        opt.selected = true;
+        returnSelect.add(opt);
+        document.getElementById('btn-confirm-return-direct').disabled = true;
+        return;
+      }
+      document.getElementById('btn-confirm-return-direct').disabled = false;
+      returnSelect.add(new Option('Selecciona un préstamo para registrar devolución…', ''));
+      activeLoans.forEach(loan => {
+        const book = allBooks.find(b => Number(b.id) === Number(loan.libro_id));
+        const bookTitle = book ? book.titulo : `Libro #${loan.libro_id}`;
+        const due = loan.fecha_limite ? loan.fecha_limite.slice(0, 10) : '';
+        returnSelect.add(new Option(`Préstamo #${loan.id} · ${loan.usuario} (CI: ${loan.ci}) — «${bookTitle}»`, loan.id));
+      });
+    }
+
+    // Render Books
     function renderBooks(books) {
       allBooks = books;
       const grid = document.getElementById('books-grid');
       const select = document.getElementById('book-select');
-      const query = booksSearch.value.trim().toLocaleLowerCase('es');
-      const filtered = books.filter((book) =>
-        `${book.titulo} ${authorName(book.autor_id)}`.toLocaleLowerCase('es').includes(query)
-      );
-      grid.replaceChildren();
-      select.replaceChildren(new Option('Selecciona un libro', ''));
+      const query = document.getElementById('book-search').value.trim().toLowerCase();
+
+      // Counts for filter pills
+      const totalCount = books.length;
+      const availCount = books.filter(b => Number(b.ejemplares_disponibles) > 0).length;
+      const outCount = totalCount - availCount;
+
+      document.getElementById('count-filter-all').textContent = totalCount;
+      document.getElementById('count-filter-avail').textContent = availCount;
+      document.getElementById('count-filter-out').textContent = outCount;
+
+      // Filter
+      let filtered = books.filter(b => {
+        const matchesQuery = `${b.titulo} ${authorName(b.autor_id)} #${b.id}`.toLowerCase().includes(query);
+        if (!matchesQuery) return false;
+        if (currentFilter === 'available') return Number(b.ejemplares_disponibles) > 0;
+        if (currentFilter === 'out') return Number(b.ejemplares_disponibles) <= 0;
+        return true;
+      });
+
+      // Update loan book picker
+      const currentBookVal = select.value;
+      select.replaceChildren(new Option('Selecciona un título disponible…', ''));
       books.forEach((book) => {
         if (Number(book.ejemplares_disponibles) > 0) {
-          select.add(new Option(`${book.titulo} · ${Number(book.ejemplares_disponibles)} disponible(s)`, book.id));
+          select.add(new Option(`${book.titulo} (${book.ejemplares_disponibles} disp.)`, book.id));
         }
       });
-      document.getElementById('book-count').textContent = `${books.length} ${books.length === 1 ? 'libro' : 'libros'}`;
+      if (currentBookVal) select.value = currentBookVal;
+
+      grid.replaceChildren();
 
       if (!filtered.length) {
-        const empty = document.createElement('div');
-        empty.className = 'panel empty-state';
-        empty.style.gridColumn = '1 / -1';
-        empty.innerHTML = `<span class="empty-icon" aria-hidden="true">✦</span>${books.length ? 'No encontramos libros con esa búsqueda.' : 'Aún no hay libros en el catálogo.'}`;
-        grid.appendChild(empty);
+        grid.innerHTML = `
+          <div class="empty-box" style="grid-column: 1 / -1;">
+            <div class="empty-icon-circle">
+              <svg class="icon icon-xl" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+            <div class="empty-title">${books.length ? 'Sin coincidencias' : 'El catálogo está vacío'}</div>
+            <div class="empty-subtitle">${books.length ? 'Intenta modificar los términos de búsqueda o filtros.' : 'Comienza añadiendo nuevos títulos con el botón "+ Agregar libro".'}</div>
+          </div>
+        `;
         return;
       }
 
       filtered.forEach((book) => {
         const available = Number(book.ejemplares_disponibles) > 0;
+        const total = Number(book.ejemplares_totales) || 1;
+        const disp = Number(book.ejemplares_disponibles) || 0;
+        const percent = Math.min(100, Math.max(0, Math.round((disp / total) * 100)));
+
         const card = document.createElement('article');
-        card.className = 'book-card';
-        const cover = document.createElement('div');
-        cover.className = 'book-cover';
-        const coverTitle = document.createElement('span');
-        coverTitle.className = 'cover-title';
-        coverTitle.textContent = book.titulo;
-        cover.appendChild(coverTitle);
-        const details = document.createElement('div');
-        details.className = 'book-details';
-        const title = document.createElement('h2');
-        title.className = 'book-title';
-        title.textContent = book.titulo;
-        const author = document.createElement('p');
-        author.className = 'book-author';
-        author.textContent = authorName(book.autor_id);
-        const meta = document.createElement('div');
-        meta.className = 'book-meta';
-        const inventory = document.createElement('span');
-        inventory.textContent = `${book.ejemplares_disponibles} de ${book.ejemplares_totales} ejemplares`;
-        const status = document.createElement('span');
-        status.className = `status-pill${available ? '' : ' out'}`;
-        status.textContent = available ? 'Disponible' : 'Agotado';
-        meta.append(inventory, status);
-        details.append(title, author, meta);
-        card.append(cover, details);
+        card.className = 'book-item-card';
+
+        card.innerHTML = `
+          <div class="book-cover-header" style="background: ${getCoverGradient(book.id)};">
+            <div class="book-cover-meta">
+              <span class="book-id-badge">#${book.id}</span>
+              <span class="badge ${available ? 'badge-success' : 'badge-danger'}">
+                ${available ? 'Disponible' : 'Agotado'}
+              </span>
+            </div>
+            <div class="book-cover-title" title="${book.titulo}">${book.titulo}</div>
+          </div>
+          <div class="book-body">
+            <div class="book-author-line">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>${authorName(book.autor_id)}</span>
+            </div>
+            <div class="stock-container">
+              <div class="stock-info">
+                <span>Disponibilidad</span>
+                <span style="color: ${available ? 'var(--text-main)' : 'var(--danger)'};">
+                  <strong>${disp}</strong> de ${total} ejemplares
+                </span>
+              </div>
+              <div class="stock-bar-track">
+                <div class="stock-bar-fill" style="width: ${percent}%; background: ${available ? '#10b981' : '#ef4444'};"></div>
+              </div>
+            </div>
+            <div class="book-card-actions">
+              <button class="btn btn-secondary btn-sm btn-loan" type="button" ${!available ? 'disabled title="Sin stock disponible"' : ''}>
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                Prestar
+              </button>
+              <button class="btn btn-ghost btn-sm btn-icon btn-edit" type="button" title="Modificar libro">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </button>
+              <button class="btn btn-ghost-danger btn-sm btn-icon btn-delete" type="button" title="Eliminar libro">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        `;
+
+        if (available) {
+          card.querySelector('.btn-loan').addEventListener('click', () => startLoanForBook(book.id));
+        }
+        card.querySelector('.btn-edit').addEventListener('click', () => openBookModal(book));
+        card.querySelector('.btn-delete').addEventListener('click', () => openDeleteBookModal(book));
+
         grid.appendChild(card);
       });
     }
 
+    // Render Loans Table
     function renderLoans(loans) {
+      allLoans = loans;
       activeLoans = loans.filter((loan) => loan.estado === 'ACTIVO');
+      populateActiveLoansReturnSelect();
+
+      document.getElementById('loan-count').textContent = `${loans.length} registros`;
+      document.getElementById('nav-active-loans-count').textContent = activeLoans.length;
+
       const body = document.getElementById('loans-body');
       body.replaceChildren();
-      document.getElementById('loan-count').textContent = `${loans.length} ${loans.length === 1 ? 'registro' : 'registros'}`;
+
       if (!loans.length) {
-        body.innerHTML = '<tr><td class="empty-state" colspan="7"><span class="empty-icon" aria-hidden="true">▤</span>Todavía no hay préstamos registrados.</td></tr>';
+        body.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-box" style="padding: 32px;">
+                <div class="empty-title">Sin préstamos registrados</div>
+                <div class="empty-subtitle">Usa el formulario para conceder un ejemplar a un lector.</div>
+              </div>
+            </td>
+          </tr>
+        `;
         return;
       }
+
       loans.forEach((loan) => {
-        const row = document.createElement('tr');
-        const userCell = document.createElement('td');
-        userCell.className = 'primary-cell';
-        userCell.textContent = loan.usuario;
-        const ciCell = document.createElement('td');
-        ciCell.textContent = loan.ci || '—';
-        const bookCell = document.createElement('td');
         const book = allBooks.find((item) => Number(item.id) === Number(loan.libro_id));
-        bookCell.textContent = book ? book.titulo : `Libro #${loan.libro_id}`;
-        const startCell = document.createElement('td');
-        startCell.textContent = loan.fecha_prestamo ? loan.fecha_prestamo.slice(0, 10) : '—';
-        const dueCell = document.createElement('td');
-        dueCell.textContent = loan.fecha_limite ? loan.fecha_limite.slice(0, 10) : '—';
-        const stateCell = document.createElement('td');
-        const state = document.createElement('span');
-        state.className = `status-pill${loan.estado === 'ACTIVO' ? '' : ' neutral'}`;
-        state.textContent = loan.estado === 'ACTIVO' ? 'En curso' : 'Devuelto';
-        stateCell.appendChild(state);
-        const actionCell = document.createElement('td');
-        if (loan.estado === 'ACTIVO') {
-          const button = document.createElement('button');
-          button.className = 'button ghost';
-          button.type = 'button';
-          button.textContent = 'Devolver';
-          button.addEventListener('click', () => openReturnModal(loan.id));
-          actionCell.appendChild(button);
-        } else {
-          actionCell.textContent = loan.fecha_devolucion ? loan.fecha_devolucion.slice(0, 10) : '—';
+        const bookTitle = book ? book.titulo : `Libro #${loan.libro_id}`;
+        const isActive = loan.estado === 'ACTIVO';
+        const start = loan.fecha_prestamo ? loan.fecha_prestamo.slice(0, 10) : '—';
+        const due = loan.fecha_limite ? loan.fecha_limite.slice(0, 10) : '—';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>
+            <div class="user-avatar-tag">
+              <div class="avatar-circle">${(loan.usuario || '?').charAt(0)}</div>
+              <strong>${loan.usuario}</strong>
+            </div>
+          </td>
+          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${loan.ci || '—'}</code></td>
+          <td><span style="font-weight: 500;">${bookTitle}</span></td>
+          <td style="color: var(--text-muted);">${start}</td>
+          <td style="color: ${isActive ? 'var(--text-main)' : 'var(--text-muted)'}; font-weight: ${isActive ? '600' : 'normal'};">${due}</td>
+          <td>
+            <span class="badge ${isActive ? 'badge-warning' : 'badge-neutral'}">
+              ${isActive ? 'En Curso' : 'Devuelto'}
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+              ${isActive ? `
+                <button class="btn btn-secondary btn-sm btn-return" type="button">
+                  <svg class="icon" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                  Devolver
+                </button>
+              ` : `
+                <span style="font-size: 11px; color: var(--text-subtle); margin-right: 4px;">${loan.fecha_devolucion ? loan.fecha_devolucion.slice(0, 10) : '—'}</span>
+              `}
+              <button class="btn btn-ghost-danger btn-sm btn-icon btn-del-loan" type="button" title="Eliminar préstamo">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
+              </button>
+            </div>
+          </td>
+        `;
+
+        if (isActive) {
+          row.querySelector('.btn-return').addEventListener('click', () => openReturnModal(loan.id));
         }
-        row.append(userCell, ciCell, bookCell, startCell, dueCell, stateCell, actionCell);
+        row.querySelector('.btn-del-loan').addEventListener('click', () => openDeleteLoanModal(loan));
+
         body.appendChild(row);
       });
     }
 
-    function renderNotifications(items) {
-      const list = document.getElementById('notifications-list');
-      list.replaceChildren();
-      document.getElementById('notification-count').textContent = `${items.length} ${items.length === 1 ? 'aviso' : 'avisos'}`;
-      if (!items.length) {
-        const empty = document.createElement('div');
-        empty.className = 'empty-state';
-        empty.innerHTML = '<span class="empty-icon" aria-hidden="true">♧</span>No hay notificaciones registradas.';
-        list.appendChild(empty);
+    // Render Users Table
+    function renderUsers(users) {
+      allUsers = users;
+      populateUserSelects();
+
+      document.getElementById('user-count').textContent = `${users.length} lectores`;
+
+      const body = document.getElementById('users-body');
+      body.replaceChildren();
+
+      if (!users.length) {
+        body.innerHTML = `
+          <tr>
+            <td colspan="5">
+              <div class="empty-box" style="padding: 32px;">
+                <div class="empty-title">Sin lectores registrados</div>
+                <div class="empty-subtitle">Registra nuevos lectores para autorizar sus préstamos.</div>
+              </div>
+            </td>
+          </tr>
+        `;
         return;
       }
-      items.forEach((item) => {
-        const row = document.createElement('article');
-        row.className = 'notification-item';
-        const icon = document.createElement('span');
-        icon.className = 'notification-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.textContent = item.tipo === 'MULTA' ? '$' : '◷';
-        const content = document.createElement('div');
-        const type = document.createElement('p');
-        type.className = 'notification-type';
-        type.textContent = item.tipo === 'POR_VENCER' ? 'Próximo a vencer' : item.tipo;
-        const message = document.createElement('p');
-        message.className = 'notification-message';
-        message.textContent = item.mensaje;
-        const detail = document.createElement('p');
-        detail.className = 'notification-detail';
-        const date = item.fecha_creacion ? item.fecha_creacion.replace('T', ' ').slice(0, 16) : '';
-        detail.textContent = `${item.usuario}${date ? ` · ${date}` : ''}`;
-        content.append(type, message, detail);
-        const badge = document.createElement('span');
-        badge.className = 'status-pill neutral';
-        badge.textContent = 'Enviada';
-        row.append(icon, content, badge);
-        list.appendChild(row);
+
+      users.forEach((u) => {
+        const activeCount = activeLoans.filter(l => String(l.ci) === String(u.ci)).length;
+        const regDate = u.fecha_registro ? u.fecha_registro.slice(0, 10) : '—';
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>
+            <div class="user-avatar-tag">
+              <div class="avatar-circle" style="background: #e0f2fe; color: #0369a1;">${(u.nombre || '?').charAt(0)}</div>
+              <strong>${u.nombre}</strong>
+            </div>
+          </td>
+          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${u.ci}</code></td>
+          <td style="color: var(--text-muted);">${regDate}</td>
+          <td>
+            <span class="badge ${activeCount > 0 ? 'badge-warning' : 'badge-neutral'}">
+              ${activeCount} activo(s)
+            </span>
+          </td>
+          <td style="text-align: right;">
+            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
+              <button class="btn btn-secondary btn-sm btn-lend-user" type="button">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                Prestar
+              </button>
+              <button class="btn btn-ghost-danger btn-sm btn-icon btn-del-user" type="button" title="Eliminar lector">
+                <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
+              </button>
+            </div>
+          </td>
+        `;
+
+        row.querySelector('.btn-lend-user').addEventListener('click', () => {
+          showView('prestamos');
+          document.getElementById('user-input').value = u.nombre;
+          document.getElementById('ci-input').value = u.ci;
+          document.getElementById('loan-user-select').value = u.ci;
+          document.getElementById('book-select').focus();
+        });
+
+        row.querySelector('.btn-del-user').addEventListener('click', () => openDeleteUserModal(u));
+
+        body.appendChild(row);
       });
     }
 
+    // Render Notifications
+    function renderNotifications(items) {
+      const list = document.getElementById('notifications-list');
+      list.replaceChildren();
+      document.getElementById('notification-count').textContent = `${items.length} alertas`;
+
+      if (!items.length) {
+        list.innerHTML = `
+          <div class="empty-box">
+            <div class="empty-icon-circle">
+              <svg class="icon icon-xl" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>
+            </div>
+            <div class="empty-title">Sin notificaciones</div>
+            <div class="empty-subtitle">Las alertas de moras y vencimientos aparecerán aquí.</div>
+          </div>
+        `;
+        return;
+      }
+
+      items.forEach((item) => {
+        const isFine = item.tipo === 'MULTA';
+        const date = item.fecha_creacion ? item.fecha_creacion.replace('T', ' ').slice(0, 16) : '';
+
+        const card = document.createElement('div');
+        card.className = 'notif-card';
+        card.innerHTML = `
+          <div class="notif-icon-circle" style="background: ${isFine ? '#fee2e2' : '#e0e7ff'}; color: ${isFine ? '#dc2626' : '#4f46e5'};">
+            ${isFine ? `
+              <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            ` : `
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            `}
+          </div>
+          <div class="notif-body">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+              <div class="notif-title">${isFine ? 'Penalización por Mora' : 'Recordatorio de Vencimiento'}</div>
+              <span class="badge ${isFine ? 'badge-danger' : 'badge-warning'}">${item.tipo}</span>
+            </div>
+            <div class="notif-desc">${item.mensaje}</div>
+            <div class="notif-footer">
+              <strong>${item.usuario}</strong>
+              ${date ? `<span>&bull;</span> <span>${date}</span>` : ''}
+            </div>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    // Load Data
     async function loadData(quiet = false) {
-      if (!quiet) document.getElementById('catalog-status').textContent = 'Actualizando catálogo…';
       try {
         const response = await fetch('/demo/datos');
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'No se pudieron cargar los datos.');
+        if (!response.ok) throw new Error(data.error || 'No se pudieron sincronizar los datos.');
+
         allAuthors = data.autores || [];
-        renderBooks(data.libros || []);
-        renderLoans(data.prestamos || []);
-        notificationDataAvailable = Boolean(data.notificaciones_disponibles);
+        allBooks = data.libros || [];
+        allLoans = data.prestamos || [];
+        allUsers = data.usuarios || [];
+
+        populateAuthorSelects();
+        renderBooks(allBooks);
+        renderLoans(allLoans);
+        renderUsers(allUsers);
         renderNotifications(data.notificaciones || []);
-        document.getElementById('catalog-status').textContent = 'Catálogo actualizado';
-        if (!notificationDataAvailable) {
-          showNotice('No se pudo conectar con Notificaciones. Los préstamos y devoluciones siguen disponibles.', 'warn', 0);
+
+        // Update KPI summary cards
+        document.getElementById('stat-total-books').textContent = allBooks.length;
+        const totalAvail = allBooks.reduce((acc, b) => acc + (Number(b.ejemplares_disponibles) || 0), 0);
+        document.getElementById('stat-avail-copies').textContent = totalAvail;
+        document.getElementById('stat-active-loans').textContent = allLoans.filter(l => l.estado === 'ACTIVO').length;
+        document.getElementById('stat-total-users').textContent = allUsers.length;
+
+        if (!data.notificaciones_disponibles && !quiet) {
+          showToast('Servicio de Notificaciones temporalmente inaccesible.', 'warn');
         }
       } catch (error) {
-        document.getElementById('catalog-status').textContent = 'No se pudo actualizar el catálogo';
-        showNotice(error.message, 'error', 0);
+        showToast(error.message, 'error');
       }
     }
 
+    // Switch View
     function showView(name) {
       document.querySelectorAll('.view').forEach((view) => {
         view.hidden = view.id !== `view-${name}`;
       });
-      document.querySelectorAll('[data-view-link]').forEach((link) => {
-        const active = link.dataset.viewLink === name;
-        link.classList.toggle('active', active);
-        if (active) link.setAttribute('aria-current', 'page');
-        else link.removeAttribute('aria-current');
+      document.querySelectorAll('[data-view-link]').forEach((tab) => {
+        const active = tab.dataset.viewLink === name;
+        tab.classList.toggle('active', active);
       });
-      if (window.location.hash !== `#${name}`) history.replaceState(null, '', `#${name}`);
+      if (window.location.hash !== `#${name}`) {
+        history.replaceState(null, '', `#${name}`);
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // Loan Modal / Return Helpers
     function openReturnModal(id) {
       pendingReturnId = id;
       const loan = activeLoans.find((item) => Number(item.id) === Number(id));
       const book = loan && allBooks.find((item) => Number(item.id) === Number(loan.libro_id));
       document.getElementById('return-description').textContent =
-        `¿Deseas registrar la devolución${book ? ` de «${book.titulo}»` : ''}? Se actualizará la disponibilidad en el catálogo.`;
-      returnModal.showModal();
+        `¿Deseas registrar la devolución de «${book ? book.titulo : `Libro #${loan.libro_id}`}» solicitado por ${loan ? loan.usuario : ''}? Se reincorporará el stock disponible en el catálogo de inmediato.`;
+      document.getElementById('return-modal').showModal();
       document.getElementById('confirm-return').focus();
     }
 
-    async function confirmReturn() {
-      if (pendingReturnId == null) return;
-      const id = pendingReturnId;
-      const confirmButton = document.getElementById('confirm-return');
-      confirmButton.disabled = true;
-      confirmButton.textContent = 'Procesando…';
+    async function processReturn(loanId) {
       try {
-        const response = await fetch(`/prestamos/${id}/devolucion`, { method: 'PUT' });
+        const response = await fetch(`/prestamos/${loanId}/devolucion`, { method: 'PUT' });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo registrar la devolución.');
-        returnModal.close();
-        showNotice(data.mensaje);
+
+        let msg = data.mensaje;
+        if (data.multa) {
+          msg += ` (Multa generada: $${data.multa.monto.toFixed(2)} por ${data.multa.dias_retraso} día(s) de retraso).`;
+        }
+        showToast(msg, data.multa ? 'warn' : 'success', 5000);
         await loadData(true);
       } catch (error) {
-        returnModal.close();
-        showNotice(error.message, 'error', 0);
-      } finally {
-        pendingReturnId = null;
-        confirmButton.disabled = false;
-        confirmButton.textContent = 'Sí, devolver';
+        showToast(error.message, 'error');
       }
     }
 
-    document.querySelectorAll('[data-view-link]').forEach((link) => {
-      link.addEventListener('click', () => showView(link.dataset.viewLink));
+    async function confirmReturn() {
+      if (!pendingReturnId) return;
+      const btn = document.getElementById('confirm-return');
+      btn.disabled = true;
+      btn.textContent = 'Procesando…';
+      try {
+        document.getElementById('return-modal').close();
+        await processReturn(pendingReturnId);
+      } finally {
+        pendingReturnId = null;
+        btn.disabled = false;
+        btn.textContent = 'Confirmar Devolución';
+      }
+    }
+
+    function openBookModal(book = null) {
+      populateAuthorSelects();
+      const modal = document.getElementById('book-modal');
+      const title = document.getElementById('book-modal-title');
+      const idInput = document.getElementById('book-form-id');
+      const titleInput = document.getElementById('book-form-title');
+      const authorSelect = document.getElementById('book-form-author');
+      const totalInput = document.getElementById('book-form-total');
+      const dispField = document.getElementById('field-book-disponibles');
+      const dispInput = document.getElementById('book-form-disponibles');
+
+      if (book) {
+        title.textContent = 'Modificar Libro';
+        idInput.value = book.id;
+        titleInput.value = book.titulo;
+        authorSelect.value = book.autor_id || '';
+        totalInput.value = book.ejemplares_totales;
+        dispInput.value = book.ejemplares_disponibles;
+        dispField.style.display = 'flex';
+      } else {
+        title.textContent = 'Agregar Nuevo Libro';
+        idInput.value = '';
+        titleInput.value = '';
+        authorSelect.value = '';
+        totalInput.value = '1';
+        dispField.style.display = 'none';
+      }
+      modal.showModal();
+      titleInput.focus();
+    }
+
+    function openAuthorModal() {
+      document.getElementById('author-form').reset();
+      document.getElementById('author-modal').showModal();
+      document.getElementById('author-form-name').focus();
+    }
+
+    function openUserModal() {
+      document.getElementById('quick-user-form').reset();
+      document.getElementById('user-modal').showModal();
+      document.getElementById('quick-user-name').focus();
+    }
+
+    function openDeleteBookModal(book) {
+      pendingDelete = { type: 'book', id: book.id, title: book.titulo };
+      document.getElementById('delete-title').textContent = 'Eliminar Libro';
+      document.getElementById('delete-desc').textContent =
+        `¿Confirmas la eliminación permanente de «${book.titulo}»? El título y sus ejemplares serán removidos del catálogo.`;
+      document.getElementById('delete-modal').showModal();
+      document.getElementById('confirm-delete').focus();
+    }
+
+    function openDeleteLoanModal(loan) {
+      const book = allBooks.find((b) => Number(b.id) === Number(loan.libro_id));
+      pendingDelete = { type: 'loan', id: loan.id, user: loan.usuario };
+      document.getElementById('delete-title').textContent = 'Eliminar Registro de Préstamo';
+      document.getElementById('delete-desc').textContent =
+        `¿Deseas eliminar el registro del préstamo #${loan.id} (${loan.usuario} · ${book ? book.titulo : `Libro #${loan.libro_id}`})? ${loan.estado === 'ACTIVO' ? 'El stock será repuesto en el catálogo automáticamente.' : ''}`;
+      document.getElementById('delete-modal').showModal();
+      document.getElementById('confirm-delete').focus();
+    }
+
+    function openDeleteUserModal(user) {
+      pendingDelete = { type: 'user', id: user.id, name: user.nombre };
+      document.getElementById('delete-title').textContent = 'Eliminar Lector';
+      document.getElementById('delete-desc').textContent =
+        `¿Confirmas la eliminación de ${user.nombre} (CI: ${user.ci})? Solo podrá eliminarse si no tiene préstamos activos.`;
+      document.getElementById('delete-modal').showModal();
+      document.getElementById('confirm-delete').focus();
+    }
+
+    async function confirmDelete() {
+      if (!pendingDelete) return;
+      const btn = document.getElementById('confirm-delete');
+      btn.disabled = true;
+      btn.textContent = 'Eliminando…';
+      try {
+        let url = '';
+        if (pendingDelete.type === 'book') url = `/libros/${pendingDelete.id}`;
+        else if (pendingDelete.type === 'loan') url = `/prestamos/${pendingDelete.id}`;
+        else if (pendingDelete.type === 'user') url = `/usuarios/${pendingDelete.id}`;
+
+        const response = await fetch(url, { method: 'DELETE' });
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'No se pudo completar la eliminación.');
+        }
+        document.getElementById('delete-modal').close();
+        showToast('Registro eliminado satisfactoriamente.', 'success');
+        await loadData(true);
+      } catch (error) {
+        document.getElementById('delete-modal').close();
+        showToast(error.message, 'error');
+      } finally {
+        pendingDelete = null;
+        btn.disabled = false;
+        btn.textContent = 'Eliminar Definitivamente';
+      }
+    }
+
+    function startLoanForBook(bookId) {
+      showView('prestamos');
+      document.getElementById('book-select').value = bookId;
+      const userInput = document.getElementById('user-input');
+      userInput.focus();
+      userInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Event Wire-up
+    document.querySelectorAll('[data-view-link]').forEach((btn) => {
+      btn.addEventListener('click', () => showView(btn.dataset.viewLink));
     });
-    document.querySelectorAll('[data-refresh]').forEach((button) => {
-      button.addEventListener('click', () => loadData());
-    });
-    booksSearch.addEventListener('input', () => renderBooks(allBooks));
-    document.getElementById('ci-input').addEventListener('input', (event) => {
-      event.target.value = event.target.value.replace(/\D/g, '').slice(0, 8);
-    });
-    document.getElementById('notice-close').addEventListener('click', hideNotice);
-    document.getElementById('cancel-return').addEventListener('click', () => returnModal.close());
-    document.getElementById('confirm-return').addEventListener('click', confirmReturn);
-    returnModal.addEventListener('click', (event) => {
-      if (event.target === returnModal) returnModal.close();
+    document.querySelectorAll('[data-refresh]').forEach((btn) => {
+      btn.addEventListener('click', () => loadData());
     });
 
-    document.getElementById('loan-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const submit = event.submitter;
+    // Filter pills
+    document.querySelectorAll('.filter-pill').forEach((pill) => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentFilter = pill.dataset.filter;
+        renderBooks(allBooks);
+      });
+    });
+
+    document.getElementById('book-search').addEventListener('input', () => renderBooks(allBooks));
+
+    // CI numeric restriction
+    ['ci-input', 'main-user-ci', 'quick-user-ci'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', (e) => {
+          e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+        });
+      }
+    });
+
+    // Auto-fill user on selection
+    document.getElementById('loan-user-select').addEventListener('change', (e) => {
+      const ci = e.target.value;
+      if (!ci) return;
+      const user = allUsers.find(u => String(u.ci) === String(ci));
+      if (user) {
+        document.getElementById('user-input').value = user.nombre;
+        document.getElementById('ci-input').value = user.ci;
+      }
+    });
+
+    // Modal Triggers
+    document.getElementById('btn-add-book').addEventListener('click', () => openBookModal());
+    document.getElementById('btn-add-author').addEventListener('click', () => openAuthorModal());
+    document.getElementById('btn-quick-new-author').addEventListener('click', () => openAuthorModal());
+    document.getElementById('btn-quick-new-user').addEventListener('click', () => openUserModal());
+
+    // Modal Closers
+    document.getElementById('close-book-modal').addEventListener('click', () => document.getElementById('book-modal').close());
+    document.getElementById('cancel-book').addEventListener('click', () => document.getElementById('book-modal').close());
+    document.getElementById('close-author-modal').addEventListener('click', () => document.getElementById('author-modal').close());
+    document.getElementById('cancel-author').addEventListener('click', () => document.getElementById('author-modal').close());
+    document.getElementById('close-user-modal').addEventListener('click', () => document.getElementById('user-modal').close());
+    document.getElementById('cancel-quick-user').addEventListener('click', () => document.getElementById('user-modal').close());
+    document.getElementById('close-return-modal').addEventListener('click', () => document.getElementById('return-modal').close());
+    document.getElementById('cancel-return').addEventListener('click', () => document.getElementById('return-modal').close());
+    document.getElementById('close-delete-modal').addEventListener('click', () => document.getElementById('delete-modal').close());
+    document.getElementById('cancel-delete').addEventListener('click', () => document.getElementById('delete-modal').close());
+
+    document.getElementById('confirm-return').addEventListener('click', confirmReturn);
+    document.getElementById('confirm-delete').addEventListener('click', confirmDelete);
+
+    // Save Book (Create / Update)
+    document.getElementById('book-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = document.getElementById('save-book');
+      submit.disabled = true;
+      submit.textContent = 'Guardando…';
+
+      const id = document.getElementById('book-form-id').value;
+      const isEdit = Boolean(id);
+      const payload = {
+        titulo: document.getElementById('book-form-title').value.trim(),
+        autor_id: document.getElementById('book-form-author').value ? Number(document.getElementById('book-form-author').value) : null,
+        ejemplares_totales: Number(document.getElementById('book-form-total').value)
+      };
+      if (isEdit) {
+        payload.ejemplares_disponibles = Number(document.getElementById('book-form-disponibles').value);
+      }
+
+      try {
+        const url = isEdit ? `/libros/${id}` : '/libros';
+        const method = isEdit ? 'PUT' : 'POST';
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo guardar el libro.');
+        document.getElementById('book-modal').close();
+        showToast(isEdit ? `«${data.titulo}» actualizado correctamente.` : `«${data.titulo}» añadido al catálogo.`);
+        await loadData(true);
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = 'Guardar Libro';
+      }
+    });
+
+    // Save Author
+    document.getElementById('author-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = document.getElementById('save-author');
+      submit.disabled = true;
+      submit.textContent = 'Guardando…';
+
+      const payload = {
+        nombre: document.getElementById('author-form-name').value.trim(),
+        nacionalidad: document.getElementById('author-form-nationality').value.trim()
+      };
+
+      try {
+        const response = await fetch('/autores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo registrar el autor.');
+        document.getElementById('author-modal').close();
+        showToast(`Autor «${data.nombre}» registrado exitosamente.`);
+        await loadData(true);
+        if (document.getElementById('book-modal').open) {
+          document.getElementById('book-form-author').value = data.id;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = 'Guardar Autor';
+      }
+    });
+
+    // Save User Main
+    document.getElementById('main-user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('main-user-name').value.trim();
+      const ci = document.getElementById('main-user-ci').value.trim();
+      try {
+        const response = await fetch('/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, ci })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo registrar el lector.');
+        e.target.reset();
+        showToast(`Lector «${data.nombre}» registrado con éxito.`);
+        await loadData(true);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Save User Quick
+    document.getElementById('quick-user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('quick-user-name').value.trim();
+      const ci = document.getElementById('quick-user-ci').value.trim();
+      try {
+        const response = await fetch('/usuarios', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, ci })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'No se pudo registrar el lector.');
+        document.getElementById('user-modal').close();
+        showToast(`Lector «${data.nombre}» registrado.`);
+        await loadData(true);
+        document.getElementById('user-input').value = data.nombre;
+        document.getElementById('ci-input').value = data.ci;
+        document.getElementById('loan-user-select').value = data.ci;
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Direct Return Form
+    document.getElementById('return-form-direct').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const loanId = document.getElementById('return-loan-select').value;
+      if (!loanId) {
+        showToast('Selecciona un préstamo activo para registrar la devolución.', 'warn');
+        return;
+      }
+      openReturnModal(loanId);
+    });
+
+    // Create Loan
+    document.getElementById('loan-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = e.submitter;
       submit.disabled = true;
       try {
         const payload = {
@@ -624,42 +2167,43 @@
           body: JSON.stringify(payload)
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'No se pudo crear el préstamo.');
-        event.target.reset();
-        showNotice(`Préstamo #${data.id} registrado correctamente.`);
+        if (!response.ok) throw new Error(data.error || 'No se pudo procesar el préstamo.');
+        e.target.reset();
+        document.getElementById('loan-user-select').value = '';
+        showToast(`Préstamo #${data.id} confirmado correctamente.`);
         await loadData(true);
-      } catch (error) {
-        showNotice(error.message, 'error', 0);
+      } catch (err) {
+        showToast(err.message, 'error');
       } finally {
         submit.disabled = false;
       }
     });
 
-    document.getElementById('review-button').addEventListener('click', async (event) => {
-      const button = event.currentTarget;
-      button.disabled = true;
+    // Review Dues
+    document.getElementById('review-button').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
       try {
         const response = await fetch('/prestamos/revisar-vencimientos', { method: 'POST' });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'No se pudo revisar vencimientos.');
-        const resultMessage = notificationDataAvailable
-          ? `Revisión completada. ${data.notificaciones_enviadas} nuevo(s) aviso(s) enviado(s).`
-          : 'Revisión completada. Notificaciones no está disponible; los avisos pendientes podrán reintentarse más tarde.';
-        showNotice(resultMessage, notificationDataAvailable ? 'success' : 'warn', 6500);
+        if (!response.ok) throw new Error(data.error || 'No se pudo realizar la revisión.');
+        showToast(`Revisión completada: ${data.notificaciones_enviadas} nuevo(s) aviso(s) generado(s).`, 'success');
         await loadData(true);
-      } catch (error) {
-        showNotice(error.message, 'error', 0);
+      } catch (err) {
+        showToast(err.message, 'error');
       } finally {
-        button.disabled = false;
+        btn.disabled = false;
       }
     });
 
+    // Hash navigation
     window.addEventListener('hashchange', () => {
-      const requestedView = window.location.hash.slice(1);
-      if (['libros', 'prestamos', 'notificaciones'].includes(requestedView)) showView(requestedView);
+      const view = window.location.hash.slice(1);
+      if (['libros', 'prestamos', 'usuarios', 'notificaciones'].includes(view)) showView(view);
     });
-    const initialView = window.location.hash.slice(1);
-    showView(['libros', 'prestamos', 'notificaciones'].includes(initialView) ? initialView : 'libros');
+
+    const initView = window.location.hash.slice(1);
+    showView(['libros', 'prestamos', 'usuarios', 'notificaciones'].includes(initView) ? initView : 'libros');
     loadData();
   </script>
 </body>

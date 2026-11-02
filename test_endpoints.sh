@@ -114,7 +114,7 @@ imprimir_titulo "3. PRESTAMO EXITOSO (DESCUENTO DE STOCK EN CATALOGO)"
 imprimir_paso "Registrando prestamo para 'usuario_prueba' (POST /prestamos)"
 RESP_PRESTAMO=$(curl -s -w "\n%{http_code}" -X POST "${BASE_PRESTAMOS}/prestamos" \
     -H "Content-Type: application/json" \
-    -d "{\"usuario\": \"usuario_prueba\", \"libro_id\": $LIBRO_ID}")
+    -d "{\"usuario\": \"usuario_prueba\", \"ci\": \"12345678\", \"libro_id\": $LIBRO_ID}")
 BODY_PRESTAMO=$(echo "$RESP_PRESTAMO" | sed '$d')
 CODE_PRESTAMO=$(echo "$RESP_PRESTAMO" | tail -n1)
 echo "Respuesta: $BODY_PRESTAMO"
@@ -139,7 +139,7 @@ imprimir_titulo "4. INTENTO DE PRESTAMO SIN STOCK (HTTP 409)"
 imprimir_paso "Intentando solicitar el mismo libro agotado..."
 RESP_AGOTADO=$(curl -s -w "\n%{http_code}" -X POST "${BASE_PRESTAMOS}/prestamos" \
     -H "Content-Type: application/json" \
-    -d "{\"usuario\": \"otro_usuario\", \"libro_id\": $LIBRO_ID}")
+    -d "{\"usuario\": \"otro_usuario\", \"ci\": \"87654321\", \"libro_id\": $LIBRO_ID}")
 BODY_AGOTADO=$(echo "$RESP_AGOTADO" | sed '$d')
 CODE_AGOTADO=$(echo "$RESP_AGOTADO" | tail -n1)
 echo "Respuesta: $BODY_AGOTADO"

@@ -60,6 +60,9 @@ def datos_demo():
         prestamos = [dict(row) for row in conn.execute(
             "SELECT * FROM prestamos ORDER BY id DESC"
         ).fetchall()]
+        usuarios = [dict(row) for row in conn.execute(
+            "SELECT * FROM usuarios ORDER BY nombre ASC"
+        ).fetchall()]
     finally:
         conn.close()
 
@@ -80,6 +83,7 @@ def datos_demo():
         "libros": libros,
         "autores": autores,
         "prestamos": prestamos,
+        "usuarios": usuarios,
         "notificaciones": notificaciones,
         "notificaciones_disponibles": notificaciones_disponibles
     }), 200
@@ -137,6 +141,10 @@ def crear_prestamo():
             VALUES (?, ?, ?, ?, ?, 'ACTIVO')
             """,
             (usuario, ci, libro_id, fecha_prestamo_str, fecha_limite_str)
+        )
+        cursor.execute(
+            "INSERT OR IGNORE INTO usuarios (nombre, ci, fecha_registro) VALUES (?, ?, ?)",
+            (usuario, ci, fecha_prestamo_str)
         )
         conn.commit()
         prestamo_id = cursor.lastrowid
@@ -377,5 +385,164 @@ def revisar_vencimientos():
         "notificaciones_enviadas": notificaciones_enviadas
     }), 200
 
+# --- PROXY CATÁLOGO (LIBROS Y AUTORES) ---
+
+@app.route('/libros', methods=['POST'])
+def proxy_crear_libro():
+    try:
+        resp = requests.post(
+            f"{CATALOGO_URL.rstrip('/')}/libros",
+            json=request.get_json(),
+            timeout=REQUEST_TIMEOUT
+        )
+        data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"mensaje": resp.text}
+        return jsonify(data), resp.status_code
+    except requests.RequestException as e:
+        logger.error(f"Error comunicando con Catálogo al crear libro: {e}")
+        return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
+
+@app.route('/libros/<int:libro_id>', methods=['PUT'])
+def proxy_actualizar_libro(libro_id):
+    try:
+        resp = requests.put(
+            f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}",
+            json=request.get_json(),
+            timeout=REQUEST_TIMEOUT
+        )
+        data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"mensaje": resp.text}
+        return jsonify(data), resp.status_code
+    except requests.RequestException as e:
+        logger.error(f"Error comunicando con Catálogo al actualizar libro {libro_id}: {e}")
+        return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
+
+@app.route('/libros/<int:libro_id>', methods=['DELETE'])
+def proxy_eliminar_libro(libro_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as count FROM prestamos WHERE libro_id = ? AND estado = 'ACTIVO'", (libro_id,))
+    activos = cursor.fetchone()['count']
+    conn.close()
+    if activos > 0:
+        return jsonify({
+            "error": f"No se puede eliminar el libro: tiene {activos} préstamo(s) activo(s) en curso."
+        }), 400
+
+    try:
+        resp = requests.delete(
+            f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}",
+            timeout=REQUEST_TIMEOUT
+        )
+        if resp.status_code == 204:
+            return '', 204
+        data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"error": resp.text}
+        return jsonify(data), resp.status_code
+    except requests.RequestException as e:
+        logger.error(f"Error comunicando con Catálogo al eliminar libro {libro_id}: {e}")
+        return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
+
+@app.route('/autores', methods=['POST'])
+def proxy_crear_autor():
+    try:
+        resp = requests.post(
+            f"{CATALOGO_URL.rstrip('/')}/autores",
+            json=request.get_json(),
+            timeout=REQUEST_TIMEOUT
+        )
+        data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"mensaje": resp.text}
+        return jsonify(data), resp.status_code
+    except requests.RequestException as e:
+        logger.error(f"Error comunicando con Catálogo al crear autor: {e}")
+        return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
+
+@app.route('/prestamos/<int:prestamo_id>', methods=['DELETE'])
+def eliminar_prestamo(prestamo_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM prestamos WHERE id = ?", (prestamo_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Préstamo no encontrado"}), 404
+    prestamo = dict(row)
+    # Solo se permite eliminar préstamos ya devueltos.
+    # Si está ACTIVO, el libro sigue fuera de stock; el flujo correcto es
+    # registrar la devolución primero (PUT /prestamos/<id>/devolucion).
+    if prestamo['estado'] == 'ACTIVO':
+        conn.close()
+        return jsonify({
+            "error": "No se puede eliminar un préstamo activo. "
+                     "Registre la devolución primero (PUT /prestamos/<id>/devolucion)."
+        }), 409
+    cursor.execute("DELETE FROM prestamos WHERE id = ?", (prestamo_id,))
+    cursor.execute("DELETE FROM multas WHERE prestamo_id = ?", (prestamo_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": f"Préstamo #{prestamo_id} eliminado exitosamente"}), 200
+
+
+# --- USUARIOS ENDPOINTS ---
+
+@app.route('/usuarios', methods=['GET'])
+def listar_usuarios():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios ORDER BY nombre ASC")
+    usuarios = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return jsonify(usuarios), 200
+
+@app.route('/usuarios', methods=['POST'])
+def crear_usuario():
+    data = request.get_json() or {}
+    nombre = str(data.get('nombre', '')).strip()
+    ci = str(data.get('ci', '')).strip()
+
+    if not nombre or not ci:
+        return jsonify({"error": "Los campos 'nombre' y 'ci' son obligatorios"}), 400
+    if not ci.isascii() or not ci.isdigit() or len(ci) > 8:
+        return jsonify({"error": "El CI debe contener solo números y tener como máximo 8 dígitos"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios WHERE ci = ?", (ci,))
+    existente = cursor.fetchone()
+    if existente:
+        conn.close()
+        return jsonify({"error": f"Ya existe un usuario registrado con el CI {ci}"}), 409
+
+    fecha_registro = datetime.now().isoformat()
+    cursor.execute(
+        "INSERT INTO usuarios (nombre, ci, fecha_registro) VALUES (?, ?, ?)",
+        (nombre, ci, fecha_registro)
+    )
+    conn.commit()
+    user_id = cursor.lastrowid
+    cursor.execute("SELECT * FROM usuarios WHERE id = ?", (user_id,))
+    usuario = dict(cursor.fetchone())
+    conn.close()
+    return jsonify(usuario), 201
+
+@app.route('/usuarios/<int:usuario_id>', methods=['DELETE'])
+def eliminar_usuario(usuario_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    user = dict(row)
+    cursor.execute("SELECT COUNT(*) as count FROM prestamos WHERE ci = ? AND estado = 'ACTIVO'", (user['ci'],))
+    activos = cursor.fetchone()['count']
+    if activos > 0:
+        conn.close()
+        return jsonify({"error": f"No se puede eliminar: el usuario tiene {activos} préstamo(s) activo(s) en curso."}), 400
+
+    cursor.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"mensaje": f"Usuario {user['nombre']} eliminado exitosamente"}), 200
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8002, debug=True)
+

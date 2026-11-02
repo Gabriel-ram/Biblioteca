@@ -1,0 +1,48 @@
+# =============================================================================
+# docker-compose.prod.yml — PRODUCCIÓN (modo B y C)
+# Usar con: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Añade el gateway Caddy y NO publica los puertos de los servicios internos.
+# =============================================================================
+
+services:
+
+  # Los servicios base NO tienen puertos publicados (sólo accesibles por Caddy).
+
+  # ---------------------------------------------------------------------------
+  # GATEWAY CADDY — única entrada pública
+  # ---------------------------------------------------------------------------
+  gateway:
+    image: caddy:2-alpine
+    container_name: gateway_service
+    env_file: .env
+    ports:
+      - "${GATEWAY_PORT:-8080}:80"
+      - "443:443"
+    volumes:
+      - ${CADDYFILE:-./gateway/Caddyfile.secure}:/etc/caddy/Caddyfile:ro
+      - ./frontend:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - biblioteca-network
+    depends_on:
+      catalogo:
+        condition: service_healthy
+      prestamos:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - http://localhost/healthz
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  caddy_data:
+  caddy_config:

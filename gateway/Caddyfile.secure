@@ -1,0 +1,98 @@
+# =============================================================================
+# Caddyfile.secure — Modo B (Cloudflare tunnel) y C (dominio con HTTPS)
+# SITE_ADDRESS: ":80" en modo B, "tu.dominio.com" en modo C
+#
+# IMPORTANTE sobre el hash bcrypt:
+#   El hash contiene caracteres "$". Docker Compose interpola variables con "$".
+#   En el archivo .env, escapa cada "$" como "$$":
+#   Ejemplo:  BASIC_AUTH_HASH=$$2a$$14$$abc...
+#   Para generar el hash: docker run --rm caddy:2-alpine caddy hash-password --plaintext "tu_clave"
+# =============================================================================
+
+{$SITE_ADDRESS} {
+    # Cabeceras de seguridad
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+    }
+
+    encode gzip
+
+    request_body {
+        max_size 1MB
+    }
+
+    # ------------------------------------------------------------------
+    # Healthcheck del gateway — SIN autenticación (para monitoreo externo)
+    # ------------------------------------------------------------------
+    handle /healthz {
+        respond "OK" 200
+    }
+
+    # ------------------------------------------------------------------
+    # Autenticación básica para TODO lo demás (front + API)
+    # Las variables se leen desde el entorno inyectado por Docker Compose.
+    # BASIC_AUTH_HASH debe estar escapada ($$) en el .env
+    # ------------------------------------------------------------------
+    basicauth /* {
+        {$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
+    }
+
+    # ------------------------------------------------------------------
+    # API — Catálogo
+    # ------------------------------------------------------------------
+    handle_path /api/catalogo/* {
+        reverse_proxy catalogo:8001
+    }
+
+    # ------------------------------------------------------------------
+    # API — Préstamos
+    # ------------------------------------------------------------------
+    handle_path /api/prestamos/* {
+        reverse_proxy prestamos:8002
+    }
+
+    # ------------------------------------------------------------------
+    # API — Notificaciones (restricciones idénticas al modo local)
+    # ------------------------------------------------------------------
+    @bloquear_notificar {
+        method POST
+        path /api/notificaciones/notificar
+    }
+    handle @bloquear_notificar {
+        respond 404
+    }
+
+    handle_path /api/notificaciones/* {
+        @get_only method GET
+        @reintentar {
+            method POST
+            path /notificaciones/*/reintentar
+        }
+        route {
+            handle @get_only {
+                reverse_proxy notificaciones:8003
+            }
+            handle @reintentar {
+                reverse_proxy notificaciones:8003
+            }
+            handle {
+                respond 404
+            }
+        }
+    }
+
+    handle /api/* {
+        respond 404
+    }
+
+    # ------------------------------------------------------------------
+    # Front-end estático
+    # ------------------------------------------------------------------
+    handle /* {
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}
