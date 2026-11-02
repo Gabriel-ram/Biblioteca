@@ -1014,23 +1014,20 @@
             </div>
             <div class="panel-card-body">
               <form id="loan-form">
+                <!-- Campos ocultos para compatibilidad con código existente o demostración -->
+                <input type="hidden" id="user-input" name="usuario">
+                <input type="hidden" id="ci-input" name="ci">
                 <div class="form-group">
                   <div class="form-label">
-                    <span>Seleccionar Lector</span>
+                    <span>Seleccionar Lector (Activo) *</span>
                     <button type="button" id="btn-quick-new-user" class="btn btn-ghost btn-sm" style="color: var(--primary);">+ Registrar</button>
                   </div>
-                  <select id="loan-user-select" class="form-control">
+                  <select id="loan-user-select" class="form-control" name="usuario_id" required>
                     <option value="">Buscar en lectores registrados…</option>
                   </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label" for="user-input">Nombre del Lector *</label>
-                  <input id="user-input" class="form-control" name="usuario" maxlength="120" placeholder="Ej. Ana Morales" required>
-                </div>
-                <div class="form-group">
-                  <label class="form-label" for="ci-input">Cédula de Identidad (CI) *</label>
-                  <input id="ci-input" class="form-control" name="ci" type="text" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" placeholder="Hasta 8 dígitos" required>
-                  <span class="form-help">Solo dígitos numéricos sin letras ni símbolos.</span>
+                  <div id="loan-user-warning" style="display: none; margin-top: 6px; font-size: 13px; color: var(--warning-text, #b45309); background: var(--warning-subtle, #fef3c7); padding: 6px 10px; border-radius: 6px; font-weight: 500;">
+                    Este usuario no tiene correo: no recibirá avisos
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="book-select">Libro a Prestar *</label>
@@ -1122,25 +1119,40 @@
         <div class="panel-card">
           <div class="panel-card-header">
             <div>
-              <h3>Registrar Lector</h3>
-              <p>Ingresa los datos personales del usuario</p>
+              <h3 id="main-user-form-title">Registrar Lector</h3>
+              <p id="main-user-form-desc">Ingresa los datos personales del usuario</p>
             </div>
           </div>
           <div class="panel-card-body">
             <form id="main-user-form">
+              <input type="hidden" id="main-user-id" name="id">
               <div class="form-group">
                 <label class="form-label" for="main-user-name">Nombre y Apellido *</label>
                 <input id="main-user-name" class="form-control" name="nombre" maxlength="120" placeholder="Ej. Carlos Mamani" required>
               </div>
               <div class="form-group">
-                <label class="form-label" for="main-user-ci">Cédula de Identidad (CI) *</label>
-                <input id="main-user-ci" class="form-control" name="ci" type="text" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" placeholder="Ej. 7654321" required>
-                <span class="form-help">Máximo 8 dígitos, único para cada lector.</span>
+                <label class="form-label" for="main-user-ci">CI / Código *</label>
+                <input id="main-user-ci" class="form-control" name="codigo" type="text" maxlength="30" placeholder="Ej. 7654321 o EST-001" required>
+                <span class="form-help">Identificador único para cada lector.</span>
               </div>
-              <button class="btn btn-primary" type="submit" style="width: 100%;">
-                <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                Guardar Lector
-              </button>
+              <div class="form-group">
+                <label class="form-label" for="main-user-email">Correo Electrónico *</label>
+                <input id="main-user-email" class="form-control" name="correo" type="email" maxlength="120" placeholder="Ej. ana@example.com" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="main-user-tipo">Tipo de Usuario *</label>
+                <select id="main-user-tipo" class="form-control" name="tipo" required>
+                  <option value="ESTUDIANTE">ESTUDIANTE</option>
+                  <option value="DOCENTE">DOCENTE</option>
+                </select>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button id="main-user-submit-btn" class="btn btn-primary" type="submit" style="flex: 1;">
+                  <svg class="icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <span id="main-user-submit-text">Guardar Lector</span>
+                </button>
+                <button id="main-user-cancel-btn" class="btn btn-secondary" type="button" style="display: none;">Cancelar</button>
+              </div>
             </form>
           </div>
         </div>
@@ -1159,7 +1171,9 @@
               <thead>
                 <tr>
                   <th>Lector</th>
-                  <th>Cédula (CI)</th>
+                  <th>CI / Código</th>
+                  <th>Correo</th>
+                  <th>Tipo</th>
                   <th>Alta en Sistema</th>
                   <th>Préstamos Activos</th>
                   <th style="text-align: right;">Acciones</th>
@@ -1291,9 +1305,20 @@
           <input id="quick-user-name" class="form-control" name="nombre" maxlength="120" placeholder="Ej. Mario Vargas Llosa" required>
         </div>
         <div class="form-group">
-          <label class="form-label" for="quick-user-ci">Cédula de Identidad (CI) *</label>
-          <input id="quick-user-ci" class="form-control" name="ci" type="text" inputmode="numeric" maxlength="8" pattern="[0-9]{1,8}" placeholder="Ej. 12345678" required>
-          <span class="form-help">Máximo 8 dígitos numéricos.</span>
+          <label class="form-label" for="quick-user-ci">CI / Código *</label>
+          <input id="quick-user-ci" class="form-control" name="codigo" type="text" maxlength="30" placeholder="Ej. 12345678 o EST-001" required>
+          <span class="form-help">Identificador único del lector.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="quick-user-email">Correo Electrónico *</label>
+          <input id="quick-user-email" class="form-control" name="correo" type="email" maxlength="120" placeholder="Ej. ana@example.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="quick-user-tipo">Tipo de Usuario *</label>
+          <select id="quick-user-tipo" class="form-control" name="tipo" required>
+            <option value="ESTUDIANTE">ESTUDIANTE</option>
+            <option value="DOCENTE">DOCENTE</option>
+          </select>
         </div>
       </div>
       <div class="modal-footer">
@@ -1368,6 +1393,16 @@
       return COVER_GRADIENTS[Math.abs(Number(id || 0)) % COVER_GRADIENTS.length];
     }
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // Modern Toast Notification
     function showToast(message, type = 'success', duration = 4000) {
       const container = document.getElementById('toast-container');
@@ -1428,10 +1463,30 @@
       const userSelect = document.getElementById('loan-user-select');
       const currentVal = userSelect.value;
       userSelect.replaceChildren(new Option('Buscar en lectores registrados…', ''));
-      allUsers.forEach(u => {
-        userSelect.add(new Option(`${u.nombre} (CI: ${u.ci})`, u.ci));
+      const activeUsers = allUsers.filter(u => u.activo === undefined || u.activo === null || Number(u.activo) === 1);
+      activeUsers.forEach(u => {
+        const codigo = u.codigo || u.ci || '—';
+        userSelect.add(new Option(`${u.nombre} (${codigo})`, u.id));
       });
       if (currentVal) userSelect.value = currentVal;
+      updateLoanUserWarning();
+    }
+
+    function updateLoanUserWarning() {
+      const userSelect = document.getElementById('loan-user-select');
+      const warningEl = document.getElementById('loan-user-warning');
+      if (!userSelect || !warningEl) return;
+      const selectedId = userSelect.value;
+      if (!selectedId) {
+        warningEl.style.display = 'none';
+        return;
+      }
+      const user = allUsers.find(u => Number(u.id) === Number(selectedId));
+      if (user && (!user.correo || !user.correo.trim())) {
+        warningEl.style.display = 'block';
+      } else {
+        warningEl.style.display = 'none';
+      }
     }
 
     function populateActiveLoansReturnSelect() {
@@ -1654,7 +1709,7 @@
       if (!users.length) {
         body.innerHTML = `
           <tr>
-            <td colspan="5">
+            <td colspan="7">
               <div class="empty-box" style="padding: 32px;">
                 <div class="empty-title">Sin lectores registrados</div>
                 <div class="empty-subtitle">Registra nuevos lectores para autorizar sus préstamos.</div>
@@ -1666,19 +1721,27 @@
       }
 
       users.forEach((u) => {
-        const activeCount = activeLoans.filter(l => String(l.ci) === String(u.ci)).length;
+        const activeCount = activeLoans.filter(l => (u.id && Number(l.usuario_id) === Number(u.id)) || (u.codigo && String(l.ci) === String(u.codigo)) || (u.ci && String(l.ci) === String(u.ci))).length;
         const regDate = u.fecha_registro ? u.fecha_registro.slice(0, 10) : '—';
+        const hasEmail = u.correo && u.correo.trim();
+        const emailHtml = hasEmail
+          ? escapeHtml(u.correo.trim())
+          : '<span style="color: var(--warning-text, #b45309); font-weight: 500; font-style: italic;">(sin correo)</span>';
+        const tipoBadgeClass = u.tipo === 'DOCENTE' ? 'badge-primary' : 'badge-neutral';
+        const tipoHtml = `<span class="badge ${tipoBadgeClass}">${escapeHtml(u.tipo || 'ESTUDIANTE')}</span>`;
 
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>
             <div class="user-avatar-tag">
-              <div class="avatar-circle" style="background: #e0f2fe; color: #0369a1;">${(u.nombre || '?').charAt(0)}</div>
-              <strong>${u.nombre}</strong>
+              <div class="avatar-circle" style="background: #e0f2fe; color: #0369a1;">${escapeHtml((u.nombre || '?').charAt(0))}</div>
+              <strong>${escapeHtml(u.nombre)}</strong>
             </div>
           </td>
-          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${u.ci}</code></td>
-          <td style="color: var(--text-muted);">${regDate}</td>
+          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${escapeHtml(u.codigo || u.ci || '—')}</code></td>
+          <td>${emailHtml}</td>
+          <td>${tipoHtml}</td>
+          <td style="color: var(--text-muted);">${escapeHtml(regDate)}</td>
           <td>
             <span class="badge ${activeCount > 0 ? 'badge-warning' : 'badge-neutral'}">
               ${activeCount} activo(s)
@@ -1686,9 +1749,12 @@
           </td>
           <td style="text-align: right;">
             <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px;">
-              <button class="btn btn-secondary btn-sm btn-lend-user" type="button">
+              <button class="btn btn-secondary btn-sm btn-lend-user" type="button" title="Prestar libro">
                 <svg class="icon" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 Prestar
+              </button>
+              <button class="btn btn-ghost btn-sm btn-icon btn-edit-user" type="button" title="Editar lector">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
               </button>
               <button class="btn btn-ghost-danger btn-sm btn-icon btn-del-user" type="button" title="Eliminar lector">
                 <svg class="icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
@@ -1699,16 +1765,44 @@
 
         row.querySelector('.btn-lend-user').addEventListener('click', () => {
           showView('prestamos');
-          document.getElementById('user-input').value = u.nombre;
-          document.getElementById('ci-input').value = u.ci;
-          document.getElementById('loan-user-select').value = u.ci;
+          const userSelect = document.getElementById('loan-user-select');
+          userSelect.value = u.id;
+          userSelect.dispatchEvent(new Event('change'));
           document.getElementById('book-select').focus();
         });
 
+        row.querySelector('.btn-edit-user').addEventListener('click', () => startEditUser(u));
         row.querySelector('.btn-del-user').addEventListener('click', () => openDeleteUserModal(u));
 
         body.appendChild(row);
       });
+    }
+
+    function startEditUser(u) {
+      document.getElementById('main-user-id').value = u.id;
+      document.getElementById('main-user-name').value = u.nombre || '';
+      document.getElementById('main-user-ci').value = u.codigo || u.ci || '';
+      document.getElementById('main-user-email').value = u.correo || '';
+      document.getElementById('main-user-tipo').value = u.tipo || 'ESTUDIANTE';
+
+      document.getElementById('main-user-form-title').textContent = 'Editar Lector';
+      document.getElementById('main-user-form-desc').textContent = `Modificando lector #${u.id}`;
+      document.getElementById('main-user-submit-text').textContent = 'Actualizar Lector';
+      document.getElementById('main-user-cancel-btn').style.display = 'inline-block';
+
+      const nameInput = document.getElementById('main-user-name');
+      nameInput.focus();
+      nameInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function resetMainUserForm() {
+      const form = document.getElementById('main-user-form');
+      form.reset();
+      document.getElementById('main-user-id').value = '';
+      document.getElementById('main-user-form-title').textContent = 'Registrar Lector';
+      document.getElementById('main-user-form-desc').textContent = 'Ingresa los datos personales del usuario';
+      document.getElementById('main-user-submit-text').textContent = 'Guardar Lector';
+      document.getElementById('main-user-cancel-btn').style.display = 'none';
     }
 
     // Render Notifications
@@ -1733,6 +1827,11 @@
       items.forEach((item) => {
         const isFine = item.tipo === 'MULTA';
         const date = item.fecha_creacion ? item.fecha_creacion.replace('T', ' ').slice(0, 16) : '';
+        const estado = (item.estado || 'PENDIENTE').toUpperCase();
+        let badgeEstadoClass = 'badge-neutral';
+        if (estado === 'ENVIADA') badgeEstadoClass = 'badge-success';
+        else if (estado === 'FALLIDA') badgeEstadoClass = 'badge-danger';
+        else if (estado === 'PENDIENTE') badgeEstadoClass = 'badge-warning';
 
         const card = document.createElement('div');
         card.className = 'notif-card';
@@ -1747,12 +1846,15 @@
           <div class="notif-body">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
               <div class="notif-title">${isFine ? 'Penalización por Mora' : 'Recordatorio de Vencimiento'}</div>
-              <span class="badge ${isFine ? 'badge-danger' : 'badge-warning'}">${item.tipo}</span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="badge ${isFine ? 'badge-danger' : 'badge-warning'}">${escapeHtml(item.tipo || '')}</span>
+                <span class="badge ${badgeEstadoClass}">${escapeHtml(estado)}</span>
+              </div>
             </div>
-            <div class="notif-desc">${item.mensaje}</div>
+            <div class="notif-desc">${escapeHtml(item.mensaje || '')}</div>
             <div class="notif-footer">
-              <strong>${item.usuario}</strong>
-              ${date ? `<span>&bull;</span> <span>${date}</span>` : ''}
+              <strong>${escapeHtml(item.usuario || '')}</strong>
+              ${date ? `<span>&bull;</span> <span>${escapeHtml(date)}</span>` : ''}
             </div>
           </div>
         `;
@@ -1916,8 +2018,9 @@
     function openDeleteUserModal(user) {
       pendingDelete = { type: 'user', id: user.id, name: user.nombre };
       document.getElementById('delete-title').textContent = 'Eliminar Lector';
+      const userCode = user.codigo || user.ci || '';
       document.getElementById('delete-desc').textContent =
-        `¿Confirmas la eliminación de ${user.nombre} (CI: ${user.ci})? Solo podrá eliminarse si no tiene préstamos activos.`;
+        `¿Confirmas la eliminación de ${user.nombre} (${userCode})? Solo podrá eliminarse si no tiene préstamos activos.`;
       document.getElementById('delete-modal').showModal();
       document.getElementById('confirm-delete').focus();
     }
@@ -1979,26 +2082,38 @@
 
     document.getElementById('book-search').addEventListener('input', () => renderBooks(allBooks));
 
-    // CI numeric restriction
-    ['ci-input', 'main-user-ci', 'quick-user-ci'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('input', (e) => {
-          e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
-        });
-      }
-    });
+    // CI numeric restriction (solo para ci-input si existiera)
+    const ciInputEl = document.getElementById('ci-input');
+    if (ciInputEl) {
+      ciInputEl.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+      });
+    }
 
     // Auto-fill user on selection
     document.getElementById('loan-user-select').addEventListener('change', (e) => {
-      const ci = e.target.value;
-      if (!ci) return;
-      const user = allUsers.find(u => String(u.ci) === String(ci));
+      const userId = e.target.value;
+      updateLoanUserWarning();
+      if (!userId) {
+        const userInput = document.getElementById('user-input');
+        const ciInput = document.getElementById('ci-input');
+        if (userInput) userInput.value = '';
+        if (ciInput) ciInput.value = '';
+        return;
+      }
+      const user = allUsers.find(u => Number(u.id) === Number(userId));
       if (user) {
-        document.getElementById('user-input').value = user.nombre;
-        document.getElementById('ci-input').value = user.ci;
+        const userInput = document.getElementById('user-input');
+        const ciInput = document.getElementById('ci-input');
+        if (userInput) userInput.value = user.nombre;
+        if (ciInput) ciInput.value = user.codigo || user.ci || '';
       }
     });
+
+    const cancelUserBtn = document.getElementById('main-user-cancel-btn');
+    if (cancelUserBtn) {
+      cancelUserBtn.addEventListener('click', resetMainUserForm);
+    }
 
     // Modal Triggers
     document.getElementById('btn-add-book').addEventListener('click', () => openBookModal());
@@ -2094,21 +2209,37 @@
       }
     });
 
-    // Save User Main
+    // Save User Main (Crear o Actualizar)
     document.getElementById('main-user-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const userId = document.getElementById('main-user-id').value;
       const nombre = document.getElementById('main-user-name').value.trim();
-      const ci = document.getElementById('main-user-ci').value.trim();
+      const codigo = document.getElementById('main-user-ci').value.trim();
+      const correo = document.getElementById('main-user-email').value.trim();
+      const tipo = document.getElementById('main-user-tipo').value.trim();
+
+      const payload = {
+        codigo,
+        ci: codigo,
+        nombre,
+        correo,
+        tipo
+      };
+
+      const isEdit = Boolean(userId);
+      const url = isEdit ? `/usuarios/${userId}` : '/usuarios';
+      const method = isEdit ? 'PUT' : 'POST';
+
       try {
-        const response = await fetch('/usuarios', {
-          method: 'POST',
+        const response = await fetch(url, {
+          method: method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, ci })
+          body: JSON.stringify(payload)
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'No se pudo registrar el lector.');
-        e.target.reset();
-        showToast(`Lector «${data.nombre}» registrado con éxito.`);
+        if (!response.ok) throw new Error(data.error || `No se pudo ${isEdit ? 'actualizar' : 'registrar'} el lector.`);
+        resetMainUserForm();
+        showToast(`Lector «${data.nombre}» ${isEdit ? 'actualizado' : 'registrado'} con éxito.`);
         await loadData(true);
       } catch (err) {
         showToast(err.message, 'error');
@@ -2119,21 +2250,24 @@
     document.getElementById('quick-user-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const nombre = document.getElementById('quick-user-name').value.trim();
-      const ci = document.getElementById('quick-user-ci').value.trim();
+      const codigo = document.getElementById('quick-user-ci').value.trim();
+      const correo = document.getElementById('quick-user-email').value.trim();
+      const tipo = document.getElementById('quick-user-tipo').value.trim();
       try {
         const response = await fetch('/usuarios', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre, ci })
+          body: JSON.stringify({ nombre, codigo, ci: codigo, correo, tipo })
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo registrar el lector.');
         document.getElementById('user-modal').close();
+        e.target.reset();
         showToast(`Lector «${data.nombre}» registrado.`);
         await loadData(true);
-        document.getElementById('user-input').value = data.nombre;
-        document.getElementById('ci-input').value = data.ci;
-        document.getElementById('loan-user-select').value = data.ci;
+        const userSelect = document.getElementById('loan-user-select');
+        userSelect.value = data.id;
+        userSelect.dispatchEvent(new Event('change'));
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -2153,14 +2287,39 @@
     // Create Loan
     document.getElementById('loan-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const submit = e.submitter;
-      submit.disabled = true;
+      const submit = e.submitter || e.target.querySelector('button[type="submit"]');
+      if (submit) submit.disabled = true;
+
       try {
-        const payload = {
-          usuario: document.getElementById('user-input').value.trim(),
-          ci: document.getElementById('ci-input').value.trim(),
-          libro_id: Number(document.getElementById('book-select').value)
-        };
+        const userId = document.getElementById('loan-user-select').value;
+        const bookId = Number(document.getElementById('book-select').value);
+
+        if (!bookId) {
+          showToast('Selecciona un libro disponible para prestar.', 'warn');
+          return;
+        }
+
+        let payload;
+        if (userId) {
+          payload = {
+            usuario_id: Number(userId),
+            libro_id: bookId
+          };
+        } else {
+          const userInput = document.getElementById('user-input');
+          const ciInput = document.getElementById('ci-input');
+          if (userInput && userInput.value && ciInput && ciInput.value) {
+            payload = {
+              usuario: userInput.value.trim(),
+              ci: ciInput.value.trim(),
+              libro_id: bookId
+            };
+          } else {
+            showToast('Selecciona un lector registrado.', 'warn');
+            return;
+          }
+        }
+
         const response = await fetch('/prestamos', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2170,12 +2329,13 @@
         if (!response.ok) throw new Error(data.error || 'No se pudo procesar el préstamo.');
         e.target.reset();
         document.getElementById('loan-user-select').value = '';
+        updateLoanUserWarning();
         showToast(`Préstamo #${data.id} confirmado correctamente.`);
         await loadData(true);
       } catch (err) {
         showToast(err.message, 'error');
       } finally {
-        submit.disabled = false;
+        if (submit) submit.disabled = false;
       }
     });
 
@@ -2187,7 +2347,8 @@
         const response = await fetch('/prestamos/revisar-vencimientos', { method: 'POST' });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo realizar la revisión.');
-        showToast(`Revisión completada: ${data.notificaciones_enviadas} nuevo(s) aviso(s) generado(s).`, 'success');
+        const totalAvisados = data.avisados !== undefined ? data.avisados : (data.notificaciones_enviadas || 0);
+        showToast(`Revisión completada: ${totalAvisados} nuevo(s) aviso(s) generado(s).`, 'success');
         await loadData(true);
       } catch (err) {
         showToast(err.message, 'error');
