@@ -1,5 +1,21 @@
 # CHANGELOG - Refactor Microservicios v2
 
+## [F4] - Integridad del catálogo
+
+### Contrato de DELETE `/libros/<id>`
+- Responde **HTTP 404** si el libro no existe.
+- Responde **HTTP 409** si `ejemplares_disponibles < ejemplares_totales` (existen ejemplares prestados).
+- Si todos los ejemplares están disponibles, elimina el libro y responde **HTTP 204** sin contenido.
+
+### Contrato de PUT `/libros/<id>`
+- Validación de `ejemplares_totales`:
+  - Si el valor no es un entero o es menor que 1, responde **HTTP 400**.
+  - Si cambia `ejemplares_totales`, se calcula `prestados = total_anterior - disponibles_anterior`:
+    - Si `nuevo_total < prestados`, responde **HTTP 409** (no se puede reducir por debajo de los ejemplares prestados).
+    - Si es válido, actualiza `ejemplares_disponibles = nuevo_total - prestados` y el estado a `DISPONIBLE` (si `disponibles > 0`) o `AGOTADO` (si `disponibles == 0`), respondiendo **HTTP 200**.
+
+---
+
 ## [F3] - SQLite con WAL y operaciones atómicas
 
 ### Cambios en Catálogo
@@ -22,4 +38,3 @@
 
 ### Pruebas de Concurrencia
 - Creado `scripts/test_concurrencia.sh` para verificar atomicidad bajo 20 peticiones paralelas de descuento (3 respuestas 200, 17 respuestas 409, 0 errores 500, stock final = 0, y verificación de logs).
-

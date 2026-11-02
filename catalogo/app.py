@@ -148,9 +148,47 @@ def actualizar_libro(libro_id):
     libro_actual = dict(row)
     titulo = data.get('titulo', libro_actual['titulo'])
     autor_id = data.get('autor_id', libro_actual['autor_id'])
-    ejemplares_totales = data.get('ejemplares_totales', libro_actual['ejemplares_totales'])
-    ejemplares_disponibles = data.get('ejemplares_disponibles', libro_actual['ejemplares_disponibles'])
-    
+
+    if autor_id is not None:
+        cursor.execute("SELECT id FROM autores WHERE id = ?", (autor_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": f"El autor con ID {autor_id} no existe"}), 400
+
+    total_anterior = libro_actual['ejemplares_totales']
+    disponibles_anterior = libro_actual['ejemplares_disponibles']
+    prestados = total_anterior - disponibles_anterior
+
+    if 'ejemplares_totales' in data:
+        raw_totales = data['ejemplares_totales']
+        if isinstance(raw_totales, bool) or raw_totales is None:
+            conn.close()
+            return jsonify({"error": "'ejemplares_totales' debe ser un número entero mayor o igual a 1"}), 400
+        try:
+            nuevo_total = int(raw_totales)
+            if isinstance(raw_totales, float) and not raw_totales.is_integer():
+                conn.close()
+                return jsonify({"error": "'ejemplares_totales' debe ser un número entero"}), 400
+        except (ValueError, TypeError):
+            conn.close()
+            return jsonify({"error": "'ejemplares_totales' debe ser un número entero"}), 400
+
+        if nuevo_total < 1:
+            conn.close()
+            return jsonify({"error": "'ejemplares_totales' debe ser mayor o igual a 1"}), 400
+
+        if nuevo_total < prestados:
+            conn.close()
+            return jsonify({
+                "error": f"No se puede reducir el total a {nuevo_total} porque hay {prestados} ejemplares prestados"
+            }), 409
+
+        ejemplares_totales = nuevo_total
+        ejemplares_disponibles = nuevo_total - prestados
+    else:
+        ejemplares_totales = total_anterior
+        ejemplares_disponibles = disponibles_anterior
+
     estado = 'DISPONIBLE' if ejemplares_disponibles > 0 else 'AGOTADO'
 
     cursor.execute(
@@ -175,9 +213,17 @@ def eliminar_libro(libro_id):
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM libros WHERE id = ?", (libro_id,))
-    if not cursor.fetchone():
+    row = cursor.fetchone()
+    if not row:
         conn.close()
         return jsonify({"error": "Libro no encontrado"}), 404
+
+    libro = dict(row)
+    if libro['ejemplares_disponibles'] < libro['ejemplares_totales']:
+        conn.close()
+        return jsonify({
+            "error": "No se puede eliminar el libro porque hay ejemplares prestados"
+        }), 409
 
     cursor.execute("DELETE FROM libros WHERE id = ?", (libro_id,))
     conn.commit()
