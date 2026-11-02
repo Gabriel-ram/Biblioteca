@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import requests
 from flask import Flask, request, jsonify, render_template
 from database import init_db, get_db_connection
+from clients import CatalogoClient, NotificacionesClient, ServicioNoDisponible
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("prestamos")
@@ -12,13 +13,14 @@ app = Flask(__name__)
 from usuarios import usuarios_bp
 app.register_blueprint(usuarios_bp)
 
+# Clients for external microservices
+catalogo_client = CatalogoClient()
+notificaciones_client = NotificacionesClient()
+
 # Configuration from Environment Variables
-CATALOGO_URL = os.getenv("CATALOGO_URL", "http://catalogo:8001")
-NOTIFICACIONES_URL = os.getenv("NOTIFICACIONES_URL", "http://notificaciones:8003")
 DIAS_PRESTAMO = int(os.getenv("DIAS_PRESTAMO", 7))
 MULTA_POR_DIA = float(os.getenv("MULTA_POR_DIA", 5))
 DIAS_AVISO = int(os.getenv("DIAS_AVISO", 2))
-REQUEST_TIMEOUT = 3
 
 with app.app_context():
     init_db()
@@ -43,17 +45,13 @@ def demo():
 def datos_demo():
     """Aggregate data for the browser while tolerating a stopped notification service."""
     try:
-        catalogo_response = requests.get(
-            f"{CATALOGO_URL.rstrip('/')}/libros", timeout=REQUEST_TIMEOUT
-        )
+        catalogo_response = catalogo_client.obtener_libros()
         catalogo_response.raise_for_status()
         libros = catalogo_response.json()
-        autores_response = requests.get(
-            f"{CATALOGO_URL.rstrip('/')}/autores", timeout=REQUEST_TIMEOUT
-        )
+        autores_response = catalogo_client.obtener_autores()
         autores_response.raise_for_status()
         autores = autores_response.json()
-    except (requests.RequestException, ValueError) as err:
+    except (ServicioNoDisponible, requests.RequestException, ValueError) as err:
         logger.error(f"No se pudieron cargar los libros del Catálogo: {err}")
         return jsonify({"error": "El servicio de Catálogo no está disponible"}), 503
 
@@ -71,13 +69,10 @@ def datos_demo():
     notificaciones = []
     notificaciones_disponibles = True
     try:
-        response = requests.get(
-            f"{NOTIFICACIONES_URL.rstrip('/')}/notificaciones",
-            timeout=REQUEST_TIMEOUT
-        )
+        response = notificaciones_client.obtener_notificaciones()
         response.raise_for_status()
         notificaciones = response.json()
-    except (requests.RequestException, ValueError) as err:
+    except (ServicioNoDisponible, requests.RequestException, ValueError) as err:
         notificaciones_disponibles = False
         logger.warning(f"Historial de notificaciones no disponible: {err}")
 
@@ -164,9 +159,8 @@ def crear_prestamo():
     conn.close()
 
     # 1. Realizar llamada HTTP a Catálogo para descontar disponibilidad
-    catalogo_patch_url = f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}/disponibilidad"
     try:
-        response = requests.patch(catalogo_patch_url, json={"operacion": "descontar"}, timeout=REQUEST_TIMEOUT)
+        response = catalogo_client.descontar_disponibilidad(libro_id)
         if response.status_code == 409:
             return jsonify({"error": "El libro no se encuentra disponible"}), 409
         elif response.status_code == 404:
@@ -184,7 +178,7 @@ def crear_prestamo():
                 "error": "Error al comunicar con el catálogo de libros",
                 "detalle": detalle
             }), response.status_code
-    except requests.RequestException as e:
+    except ServicioNoDisponible as e:
         logger.error(f"Error conectando con Catálogo: {e}")
         return jsonify({"error": "No se pudo establecer comunicación con el servicio de Catálogo"}), 503
 
@@ -221,28 +215,26 @@ def crear_prestamo():
         return jsonify(prestamo), 201
 
     except Exception as e:
-        logger.error(f"Error al guardar préstamo localmente. Iniciando rollback en Catálogo: {e}")
+        logger.error(f"Error al guardar préstamo localmente para libro_id={libro_id}. Iniciando rollback en Catálogo: {e}")
         conn.rollback()
         conn.close()
         
         # Rollback en Catálogo reponiendo el stock
         try:
-            rollback_response = requests.patch(
-                catalogo_patch_url,
-                json={"operacion": "reponer"},
-                timeout=REQUEST_TIMEOUT
-            )
+            rollback_response = catalogo_client.reponer_disponibilidad(libro_id)
             if rollback_response.status_code == 409:
                 logger.warning(
                     f"Catálogo reportó 409 al reponer libro {libro_id} en rollback compensatorio: stock ya completo"
                 )
             elif rollback_response.status_code != 200:
-                logger.error(
-                    "Catálogo rechazó la compensación de stock: "
+                logger.critical(
+                    f"CRITICAL: Catálogo rechazó la compensación de stock para libro_id={libro_id}, prestamo_id=None: "
                     f"HTTP {rollback_response.status_code}"
                 )
-        except requests.RequestException as rollback_err:
-            logger.error(f"Error durante el rollback de stock en Catálogo: {rollback_err}")
+        except ServicioNoDisponible as rollback_err:
+            logger.critical(
+                f"CRITICAL: Falló la compensación de stock en Catálogo para libro_id={libro_id}, prestamo_id=None: {rollback_err}"
+            )
 
         return jsonify({
             "error": "Error interno al procesar el préstamo; se intentó revertir la reserva del libro"
@@ -297,14 +289,9 @@ def registrar_devolucion(prestamo_id):
 
     # Keep local writes serialized so concurrent return requests cannot restore stock twice.
     libro_id = prestamo['libro_id']
-    catalogo_patch_url = f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}/disponibilidad"
     try:
-        response = requests.patch(
-            catalogo_patch_url,
-            json={"operacion": "reponer"},
-            timeout=REQUEST_TIMEOUT
-        )
-    except requests.RequestException as err:
+        response = catalogo_client.reponer_disponibilidad(libro_id)
+    except ServicioNoDisponible as err:
         conn.rollback()
         conn.close()
         logger.error(f"No se pudo reponer el libro {libro_id} en Catálogo: {err}")
@@ -364,18 +351,14 @@ def registrar_devolucion(prestamo_id):
             f"Error guardando devolución #{prestamo_id}; intentando revertir stock"
         )
         try:
-            compensation = requests.patch(
-                catalogo_patch_url,
-                json={"operacion": "descontar"},
-                timeout=REQUEST_TIMEOUT
-            )
+            compensation = catalogo_client.descontar_disponibilidad(libro_id)
             if compensation.status_code != 200:
-                logger.error(
-                    "Catálogo no aceptó la compensación tras fallo local: "
+                logger.critical(
+                    f"CRITICAL: Catálogo no aceptó la compensación tras fallo local en préstamo #{prestamo_id}, libro #{libro_id}: "
                     f"HTTP {compensation.status_code}"
                 )
-        except requests.RequestException as compensation_err:
-            logger.error(f"Falló la compensación de inventario: {compensation_err}")
+        except ServicioNoDisponible as compensation_err:
+            logger.critical(f"CRITICAL: Falló la compensación de inventario para préstamo #{prestamo_id}, libro #{libro_id}: {compensation_err}")
         return jsonify({
             "error": "No se pudo guardar la devolución localmente; se intentó revertir el stock"
         }), 500
@@ -386,23 +369,22 @@ def registrar_devolucion(prestamo_id):
 
     # Notification delivery is best-effort: it must not undo a successful return.
     if multa_info:
-        notif_url = f"{NOTIFICACIONES_URL.rstrip('/')}/notificar"
         mensaje_notif = (
             f"Estimado/a {prestamo['usuario']}, su devolución del préstamo #{prestamo_id} registró "
             f"{dias_retraso} días de retraso. Se ha generado una multa de ${monto_multa:.2f}."
         )
         try:
-            notif_response = requests.post(
-                notif_url,
-                json={"tipo": "MULTA", "usuario": prestamo['usuario'], "mensaje": mensaje_notif},
-                timeout=REQUEST_TIMEOUT
+            notif_response = notificaciones_client.enviar_notificacion(
+                tipo="MULTA",
+                usuario=prestamo['usuario'],
+                mensaje=mensaje_notif
             )
             if notif_response.status_code not in (200, 202):
                 logger.warning(
-                    f"Notificaciones rechazó la multa: HTTP {notif_response.status_code}"
+                    f"Notificaciones rechazó la multa para préstamo #{prestamo_id}: HTTP {notif_response.status_code}"
                 )
-        except requests.RequestException as err:
-            logger.error(f"Fallo al enviar notificación de multa: {err}")
+        except ServicioNoDisponible as err:
+            logger.warning(f"Fallo al enviar notificación de multa para préstamo #{prestamo_id}: {err}")
 
     respuesta = {
         "mensaje": "Devolución registrada exitosamente",
@@ -419,7 +401,6 @@ def revisar_vencimientos():
     cursor = conn.cursor()
     ahora = datetime.now().date()
     notificaciones_enviadas = 0
-    notif_url = f"{NOTIFICACIONES_URL.rstrip('/')}/notificar"
 
     # Serialize batch runs and only mark an alert after Notificaciones accepts it.
     cursor.execute("BEGIN IMMEDIATE")
@@ -436,16 +417,16 @@ def revisar_vencimientos():
 
         dias_restantes = (fecha_limite_dt.date() - ahora).days
         if dias_restantes <= DIAS_AVISO:
-            payload = {
-                "tipo": "POR_VENCER",
-                "usuario": prestamo['usuario'],
-                "mensaje": (
-                    f"RECORDATORIO: El préstamo #{prestamo['id']} (Libro ID #{prestamo['libro_id']}) "
-                    f"vence el {fecha_limite_dt.strftime('%Y-%m-%d')}. Días restantes: {dias_restantes}."
-                )
-            }
+            mensaje = (
+                f"RECORDATORIO: El préstamo #{prestamo['id']} (Libro ID #{prestamo['libro_id']}) "
+                f"vence el {fecha_limite_dt.strftime('%Y-%m-%d')}. Días restantes: {dias_restantes}."
+            )
             try:
-                resp = requests.post(notif_url, json=payload, timeout=REQUEST_TIMEOUT)
+                resp = notificaciones_client.enviar_notificacion(
+                    tipo="POR_VENCER",
+                    usuario=prestamo['usuario'],
+                    mensaje=mensaje
+                )
                 if resp.status_code in (200, 202):
                     cursor.execute(
                         "UPDATE prestamos SET aviso_vencimiento_enviado = 1 WHERE id = ?",
@@ -457,8 +438,8 @@ def revisar_vencimientos():
                         f"Notificaciones rechazó aviso para préstamo #{prestamo['id']}: "
                         f"HTTP {resp.status_code}"
                     )
-            except requests.RequestException as err:
-                logger.error(
+            except ServicioNoDisponible as err:
+                logger.warning(
                     f"Error enviando aviso por vencer para préstamo #{prestamo['id']}: {err}"
                 )
 
@@ -477,39 +458,27 @@ def revisar_vencimientos():
 def proxy_libros():
     if request.method == 'GET':
         try:
-            resp = requests.get(
-                f"{CATALOGO_URL.rstrip('/')}/libros",
-                params=request.args,
-                timeout=REQUEST_TIMEOUT
-            )
+            resp = catalogo_client.obtener_libros(params=request.args)
             data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else resp.text
             return jsonify(data), resp.status_code
-        except requests.RequestException as e:
+        except ServicioNoDisponible as e:
             logger.error(f"Error comunicando con Catálogo al obtener libros: {e}")
             return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
     try:
-        resp = requests.post(
-            f"{CATALOGO_URL.rstrip('/')}/libros",
-            json=request.get_json(),
-            timeout=REQUEST_TIMEOUT
-        )
+        resp = catalogo_client.crear_libro(request.get_json())
         data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"mensaje": resp.text}
         return jsonify(data), resp.status_code
-    except requests.RequestException as e:
+    except ServicioNoDisponible as e:
         logger.error(f"Error comunicando con Catálogo al crear libro: {e}")
         return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
 
 @app.route('/libros/<int:libro_id>', methods=['PUT'])
 def proxy_actualizar_libro(libro_id):
     try:
-        resp = requests.put(
-            f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}",
-            json=request.get_json(),
-            timeout=REQUEST_TIMEOUT
-        )
+        resp = catalogo_client.actualizar_libro(libro_id, request.get_json())
         data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"mensaje": resp.text}
         return jsonify(data), resp.status_code
-    except requests.RequestException as e:
+    except ServicioNoDisponible as e:
         logger.error(f"Error comunicando con Catálogo al actualizar libro {libro_id}: {e}")
         return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
 
@@ -526,15 +495,12 @@ def proxy_eliminar_libro(libro_id):
         }), 400
 
     try:
-        resp = requests.delete(
-            f"{CATALOGO_URL.rstrip('/')}/libros/{libro_id}",
-            timeout=REQUEST_TIMEOUT
-        )
+        resp = catalogo_client.eliminar_libro(libro_id)
         if resp.status_code == 204:
             return '', 204
         data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"error": resp.text}
         return jsonify(data), resp.status_code
-    except requests.RequestException as e:
+    except ServicioNoDisponible as e:
         logger.error(f"Error comunicando con Catálogo al eliminar libro {libro_id}: {e}")
         return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
 
@@ -542,25 +508,17 @@ def proxy_eliminar_libro(libro_id):
 def proxy_autores():
     if request.method == 'GET':
         try:
-            resp = requests.get(
-                f"{CATALOGO_URL.rstrip('/')}/autores",
-                params=request.args,
-                timeout=REQUEST_TIMEOUT
-            )
+            resp = catalogo_client.obtener_autores(params=request.args)
             data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else resp.text
             return jsonify(data), resp.status_code
-        except requests.RequestException as e:
+        except ServicioNoDisponible as e:
             logger.error(f"Error comunicando con Catálogo al obtener autores: {e}")
             return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
     try:
-        resp = requests.post(
-            f"{CATALOGO_URL.rstrip('/')}/autores",
-            json=request.get_json(),
-            timeout=REQUEST_TIMEOUT
-        )
+        resp = catalogo_client.crear_autor(request.get_json())
         data = resp.json() if 'application/json' in resp.headers.get('content-type', '') else {"mensaje": resp.text}
         return jsonify(data), resp.status_code
-    except requests.RequestException as e:
+    except ServicioNoDisponible as e:
         logger.error(f"Error comunicando con Catálogo al crear autor: {e}")
         return jsonify({"error": "No se pudo comunicar con el servicio de Catálogo"}), 503
 

@@ -1,5 +1,33 @@
 # CHANGELOG - Refactor Microservicios v2
 
+## [F6] - Cliente HTTP de Préstamos y Resiliencia
+
+### Clientes HTTP Centralizados (`prestamos/clients.py`)
+- Creadas las clases `CatalogoClient` y `NotificacionesClient` utilizando `requests.Session` para reusar conexiones TCP y pools HTTP.
+- Definida la excepción personalizada `ServicioNoDisponible` que captura y traduce cualquier `requests.exceptions.RequestException`.
+- Configuración dinámica de timeouts (conexión, lectura) mediante tupla `(connect_timeout, read_timeout)` a través de variables de entorno:
+  - `CATALOGO_TIMEOUT`: valor por defecto 3 segundos.
+  - `NOTIFICACIONES_TIMEOUT`: valor por defecto 2 segundos.
+  - Añadidas a `.env.example` y `.env`.
+- Eliminada la constante fija `REQUEST_TIMEOUT` y las llamadas dispersas de `requests.*` en `prestamos/app.py`.
+
+### Comportamiento de Resiliencia y Contratos (`prestamos/app.py`)
+- **Creación de Préstamo (`POST /prestamos`)**:
+  - Si Catálogo no responde o supera el timeout, responde **HTTP 503** con formato estándar `{"error": "No se pudo establecer comunicación con el servicio de Catálogo"}` y no almacena ningún préstamo localmente.
+  - Si Catálogo descontó el ejemplar pero la inserción local en SQLite falla, ejecuta rollback compensatorio llamando a `reponer_disponibilidad(libro_id)`.
+  - Si la compensación también falla o Catálogo no responde, emite un log a nivel `CRITICAL` con los identificadores técnicos (`libro_id`, `prestamo_id=None`) sin filtrar información personal (sin CI, nombres ni correos).
+- **Devolución de Préstamo (`PUT /prestamos/<id>/devolucion`)**:
+  - Primero invoca a Catálogo mediante `reponer_disponibilidad(libro_id)`. Si Catálogo no responde o hay timeout, responde **HTTP 503** con `{"error": "Catálogo no está disponible; el préstamo continúa activo"}` y el préstamo permanece en estado `ACTIVO`.
+  - Si Catálogo responde **HTTP 409** (ejemplares ya al máximo por la semántica atómica de F3), registra un `warning` y procede a cerrar la devolución localmente.
+  - Si la reposición en Catálogo tiene éxito pero la escritura en SQLite falla, ejecuta compensación llamando a `descontar_disponibilidad(libro_id)` y registra el fallo en logs.
+- **Notificaciones (Multas y Avisos)**:
+  - Las llamadas a Notificaciones operan bajo el patrón best-effort: un fallo en Notificaciones nunca aborta una operación exitosa ni propaga errores **HTTP 500** al cliente.
+  - En caso de indisponibilidad o rechazo por parte del servicio de Notificaciones, registra un log a nivel `WARNING` que no contiene datos sensibles (`ci` ni correos electrónicos).
+- **Proxy de Catálogo (`/libros`, `/autores`)**:
+  - Mantenidos plenamente operativos utilizando `CatalogoClient`, devolviendo **HTTP 503** ante fallos de conexión o timeouts de Catálogo.
+
+---
+
 ## [F5] - Usuarios dentro de Préstamos
 
 ### Base de Datos (`prestamos/database.py`)
