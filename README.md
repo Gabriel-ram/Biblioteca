@@ -191,11 +191,11 @@ El servicio de **Préstamos** utiliza las siguientes variables de entorno (confi
   ```
 
 - **POST `/prestamos`**
-  - Registrar un nuevo préstamo (descuenta automáticamente del catálogo). Requiere `usuario`, `ci` (de 1 a 8 dígitos) y `libro_id`.
+  - Registrar un nuevo préstamo (descuenta automáticamente del catálogo). Requiere `usuario`, `ci` (de 1 a 8 dígitos) y `libro_id` (o alternativamente `usuario_id` y `libro_id`). Permite opcionalmente especificar `dias_prestamo` (entero positivo con los días de duración del préstamo; por defecto toma `DIAS_PRESTAMO` = 7).
   ```bash
   curl -X POST http://localhost:8002/prestamos \
     -H "Content-Type: application/json" \
-    -d '{"usuario": "juan.perez", "ci": "12345678", "libro_id": 1}'
+    -d '{"usuario": "juan.perez", "ci": "12345678", "libro_id": 1, "dias_prestamo": 14}'
   ```
 
 El catálogo de demostración contiene actualmente *La casa de los espíritus* y diez títulos añadidos: *Don Quijote de la Mancha*, *La Odisea*, *Orgullo y prejuicio*, *Frankenstein*, *Crimen y castigo*, *Cien años de soledad*, *El principito*, *1984*, *Rayuela* y *Ficciones*. Estos registros están guardados en el volumen Docker `catalogo_data`; se conservan al reiniciar contenedores, pero se eliminan si ejecutas `docker compose down -v`.

@@ -50,10 +50,14 @@ def preparar_contenido_correo(tipo: str, usuario: str, asunto: str = None, mensa
 
     if tipo_norm == "PRESTAMO":
         asunto_def = f"Biblioteca: Préstamo registrado - {titulo}"
+        dias_prestamo = datos.get("dias_prestamo")
+        dias_txt = f"- Plazo de préstamo: {dias_prestamo} día(s)\n" if dias_prestamo else ""
+        dias_html = f"\n    <li><strong>Duración del préstamo:</strong> {dias_prestamo} día(s)</li>" if dias_prestamo else ""
         texto_plano = (
             f"Estimado/a {usuario}:\n\n"
             f"Confirmamos el registro de tu préstamo del libro:\n"
             f"- Título: {titulo}\n"
+            f"{dias_txt}"
             f"- Fecha límite de devolución: {fecha_limite}\n\n"
             f"{mensaje if mensaje else ''}\n\n"
             f"---\n"
@@ -67,7 +71,7 @@ def preparar_contenido_correo(tipo: str, usuario: str, asunto: str = None, mensa
   <p>Estimado/a <strong>{html.escape(usuario)}</strong>:</p>
   <p>Confirmamos el registro de tu préstamo:</p>
   <ul>
-    <li><strong>Libro:</strong> {html.escape(titulo)}</li>
+    <li><strong>Libro:</strong> {html.escape(titulo)}</li>{dias_html}
     <li><strong>Fecha límite de devolución:</strong> {html.escape(fecha_limite)}</li>
   </ul>
   {f"<p>{html.escape(mensaje)}</p>" if mensaje else ""}

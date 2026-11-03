@@ -1035,6 +1035,13 @@
                     <option value="">Selecciona un título disponible…</option>
                   </select>
                 </div>
+                <div class="form-group">
+                  <label class="form-label" for="loan-days-input">Duración del Préstamo (días) *</label>
+                  <input type="number" id="loan-days-input" name="dias_prestamo" class="form-control" min="1" max="365" value="7" required placeholder="Ej. 7">
+                  <div id="loan-days-hint" style="margin-top: 4px; font-size: 12px; color: var(--text-muted);">
+                    Plazo: 7 días
+                  </div>
+                </div>
                 <button class="btn btn-primary" type="submit" style="width: 100%; margin-top: 6px;">
                   <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   Confirmar Préstamo
@@ -1088,6 +1095,7 @@
                   <th>CI</th>
                   <th>Libro</th>
                   <th>Fecha Préstamo</th>
+                  <th>Plazo</th>
                   <th>Fecha Límite</th>
                   <th>Estado</th>
                   <th style="text-align: right;">Acciones</th>
@@ -1635,7 +1643,7 @@
       if (!loans.length) {
         body.innerHTML = `
           <tr>
-            <td colspan="7">
+            <td colspan="8">
               <div class="empty-box" style="padding: 32px;">
                 <div class="empty-title">Sin préstamos registrados</div>
                 <div class="empty-subtitle">Usa el formulario para conceder un ejemplar a un lector.</div>
@@ -1648,7 +1656,7 @@
 
       loans.forEach((loan) => {
         const book = allBooks.find((item) => Number(item.id) === Number(loan.libro_id));
-        const bookTitle = book ? book.titulo : `Libro #${loan.libro_id}`;
+        const bookTitle = (book ? book.titulo : null) || loan.libro_titulo || `Libro #${loan.libro_id}`;
         const isActive = loan.estado === 'ACTIVO';
         const start = loan.fecha_prestamo ? loan.fecha_prestamo.slice(0, 10) : '—';
         const due = loan.fecha_limite ? loan.fecha_limite.slice(0, 10) : '—';
@@ -1664,6 +1672,7 @@
           <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${loan.ci || '—'}</code></td>
           <td><span style="font-weight: 500;">${bookTitle}</span></td>
           <td style="color: var(--text-muted);">${start}</td>
+          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600;">${loan.dias_prestamo || 7}d</code></td>
           <td style="color: ${isActive ? 'var(--text-main)' : 'var(--text-muted)'}; font-weight: ${isActive ? '600' : 'normal'};">${due}</td>
           <td>
             <span class="badge ${isActive ? 'badge-warning' : 'badge-neutral'}">
@@ -1887,6 +1896,32 @@
         document.getElementById('stat-active-loans').textContent = allLoans.filter(l => l.estado === 'ACTIVO').length;
         document.getElementById('stat-total-users').textContent = allUsers.length;
 
+        if (!data.catalogo_disponible) {
+          const bookSelect = document.getElementById('book-select');
+          if (bookSelect) {
+            bookSelect.innerHTML = '<option value="">⚠️ Catálogo fuera de línea (no disponible)</option>';
+            bookSelect.disabled = true;
+          }
+          const submitBtn = document.querySelector('#loan-form button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.title = 'No se pueden crear préstamos: Catálogo fuera de servicio';
+          }
+          if (!quiet) {
+            showToast('Catálogo fuera de servicio: préstamos visibles en modo consulta.', 'warn');
+          }
+        } else {
+          const bookSelect = document.getElementById('book-select');
+          if (bookSelect && bookSelect.disabled) {
+            bookSelect.disabled = false;
+          }
+          const submitBtn = document.querySelector('#loan-form button[type="submit"]');
+          if (submitBtn && submitBtn.disabled) {
+            submitBtn.disabled = false;
+            submitBtn.title = '';
+          }
+        }
+
         if (!data.notificaciones_disponibles && !quiet) {
           showToast('Servicio de Notificaciones temporalmente inaccesible.', 'warn');
         }
@@ -2087,6 +2122,21 @@
     if (ciInputEl) {
       ciInputEl.addEventListener('input', (e) => {
         e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+      });
+    }
+
+    const loanDaysInput = document.getElementById('loan-days-input');
+    const loanDaysHint = document.getElementById('loan-days-hint');
+    if (loanDaysInput && loanDaysHint) {
+      loanDaysInput.addEventListener('input', () => {
+        const d = parseInt(loanDaysInput.value, 10);
+        if (!isNaN(d) && d > 0) {
+          const target = new Date();
+          target.setDate(target.getDate() + d);
+          loanDaysHint.textContent = `Plazo: ${d} día${d === 1 ? '' : 's'} · Vence aprox.: ${target.toISOString().slice(0, 10)}`;
+        } else {
+          loanDaysHint.textContent = 'Indica los días de duración';
+        }
       });
     }
 
@@ -2299,11 +2349,16 @@
           return;
         }
 
+        const diasInput = document.getElementById('loan-days-input');
+        const diasVal = diasInput && diasInput.value ? parseInt(diasInput.value, 10) : 7;
+        const diasPrestamo = !isNaN(diasVal) && diasVal > 0 ? diasVal : 7;
+
         let payload;
         if (userId) {
           payload = {
             usuario_id: Number(userId),
-            libro_id: bookId
+            libro_id: bookId,
+            dias_prestamo: diasPrestamo
           };
         } else {
           const userInput = document.getElementById('user-input');
@@ -2312,7 +2367,8 @@
             payload = {
               usuario: userInput.value.trim(),
               ci: ciInput.value.trim(),
-              libro_id: bookId
+              libro_id: bookId,
+              dias_prestamo: diasPrestamo
             };
           } else {
             showToast('Selecciona un lector registrado.', 'warn');

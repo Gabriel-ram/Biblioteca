@@ -30,7 +30,8 @@ def init_db():
             fecha_devolucion TEXT,
             estado TEXT NOT NULL DEFAULT 'ACTIVO',
             aviso_vencimiento_enviado INTEGER NOT NULL DEFAULT 0,
-            ci TEXT
+            ci TEXT,
+            dias_prestamo INTEGER DEFAULT 7
         )
     ''')
 
@@ -50,6 +51,9 @@ def init_db():
         cursor.execute("ALTER TABLE prestamos ADD COLUMN libro_titulo TEXT")
     if 'aviso_enviado_en' not in cols_prestamos:
         cursor.execute("ALTER TABLE prestamos ADD COLUMN aviso_enviado_en TEXT")
+    if 'dias_prestamo' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN dias_prestamo INTEGER DEFAULT 7")
+        cursor.execute("UPDATE prestamos SET dias_prestamo = 7 WHERE dias_prestamo IS NULL")
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS multas (

@@ -44,7 +44,10 @@ def demo():
 
 @app.route('/demo/datos', methods=['GET'])
 def datos_demo():
-    """Aggregate data for the browser while tolerating a stopped notification service."""
+    """Aggregate data for the browser while tolerating stopped catalog or notification services."""
+    libros = []
+    autores = []
+    catalogo_disponible = True
     try:
         catalogo_response = catalogo_client.obtener_libros()
         catalogo_response.raise_for_status()
@@ -53,8 +56,8 @@ def datos_demo():
         autores_response.raise_for_status()
         autores = autores_response.json()
     except (ServicioNoDisponible, requests.RequestException, ValueError) as err:
-        logger.error(f"No se pudieron cargar los libros del Catálogo: {err}")
-        return jsonify({"error": "El servicio de Catálogo no está disponible"}), 503
+        catalogo_disponible = False
+        logger.warning(f"No se pudieron cargar los libros del Catálogo: {err}")
 
     conn = get_db_connection()
     try:
@@ -83,6 +86,7 @@ def datos_demo():
         "prestamos": prestamos,
         "usuarios": usuarios,
         "notificaciones": notificaciones,
+        "catalogo_disponible": catalogo_disponible,
         "notificaciones_disponibles": notificaciones_disponibles
     }), 200
 
@@ -94,6 +98,20 @@ def crear_prestamo():
     libro_id = data.get('libro_id')
     if not libro_id:
         return jsonify({"error": "El campo 'libro_id' es obligatorio"}), 400
+
+    dias_param = data.get('dias_prestamo')
+    if dias_param is None or dias_param == '':
+        dias_param = data.get('dias')
+
+    if dias_param is not None and dias_param != '':
+        try:
+            dias_prestamo = int(dias_param)
+            if dias_prestamo <= 0:
+                return jsonify({"error": "El tiempo de préstamo (en días) debe ser mayor a 0"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"error": "El tiempo de préstamo (en días) debe ser un número entero válido"}), 400
+    else:
+        dias_prestamo = DIAS_PRESTAMO
 
     usuario_id_param = data.get('usuario_id')
     codigo_usuario_param = data.get('codigo_usuario')
@@ -188,7 +206,7 @@ def crear_prestamo():
 
     # 2. Calcular fechas y registrar préstamo localmente
     fecha_actual_dt = datetime.now()
-    fecha_limite_dt = fecha_actual_dt + timedelta(days=DIAS_PRESTAMO)
+    fecha_limite_dt = fecha_actual_dt + timedelta(days=dias_prestamo)
     
     fecha_prestamo_str = fecha_actual_dt.isoformat()
     fecha_limite_str = fecha_limite_dt.isoformat()
@@ -200,11 +218,11 @@ def crear_prestamo():
             """
             INSERT INTO prestamos (
                 usuario, ci, libro_id, fecha_prestamo, fecha_limite, estado,
-                aviso_vencimiento_enviado, usuario_id, libro_titulo
+                aviso_vencimiento_enviado, usuario_id, libro_titulo, dias_prestamo
             )
-            VALUES (?, ?, ?, ?, ?, 'ACTIVO', 0, ?, ?)
+            VALUES (?, ?, ?, ?, ?, 'ACTIVO', 0, ?, ?, ?)
             """,
-            (usuario_nombre, usuario_ci, libro_id, fecha_prestamo_str, fecha_limite_str, usuario_id, libro_titulo)
+            (usuario_nombre, usuario_ci, libro_id, fecha_prestamo_str, fecha_limite_str, usuario_id, libro_titulo, dias_prestamo)
         )
         conn.commit()
         prestamo_id = cursor.lastrowid
@@ -233,7 +251,8 @@ def crear_prestamo():
                         correo=correo_usuario,
                         datos={
                             "titulo": libro_titulo,
-                            "fecha_limite": fecha_limite_legible
+                            "fecha_limite": fecha_limite_legible,
+                            "dias_prestamo": dias_prestamo
                         },
                         clave=f"PRESTAMO:{prestamo_id}"
                     )

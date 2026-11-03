@@ -1,19 +1,681 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
-  <title>Sistema de Biblioteca — En construcción</title>
-  <style>
-    body { font-family: system-ui, sans-serif; display: flex; align-items: center;
-           justify-content: center; height: 100vh; margin: 0; background: #0f172a; color: #f8fafc; }
-    .card { text-align: center; padding: 2rem; border: 1px solid #334155; border-radius: 12px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+    content="Sistema de Gestión de Biblioteca Universitaria - Panel de Administración y Microservicios">
+  <title>BiblioTech — Sistema de Gestión de Biblioteca Universitaria</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <div class="card">
-    <h1>📚 Sistema de Biblioteca</h1>
-    <p>Front-end en construcción (F10).</p>
-    <p>Los servicios API están disponibles en <code>/api/catalogo</code>, <code>/api/prestamos</code> y <code>/api/notificaciones</code>.</p>
+  <div class="app-layout">
+    <!-- Overlay móvil para cerrar sidebar al hacer clic fuera -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- SIDEBAR DE NAVEGACIÓN -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Marca institucional -->
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            <path d="M12 6v6" />
+            <path d="M9 9h6" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">BiblioTech</span>
+          <span class="brand-subtitle">Biblioteca Universitaria</span>
+        </div>
+      </div>
+
+      <!-- Menú de navegación principal -->
+      <nav class="sidebar-nav" aria-label="Navegación principal">
+        <div class="nav-group-label">GESTIÓN PRINCIPAL</div>
+
+        <button class="nav-item on" data-t="estado" id="nav-btn-estado">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+          </span>
+          <span class="nav-label">Panel Principal</span>
+        </button>
+
+        <button class="nav-item" data-t="catalogo" id="nav-btn-catalogo">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
+          </span>
+          <span class="nav-label">Catálogo</span>
+        </button>
+
+        <button class="nav-item" data-t="usuarios" id="nav-btn-usuarios">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </span>
+          <span class="nav-label">Usuarios</span>
+        </button>
+
+        <button class="nav-item" data-t="prestamos" id="nav-btn-prestamos">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m16 3 4 4-4 4" />
+              <path d="M20 7H4" />
+              <path d="m8 21-4-4 4-4" />
+              <path d="M4 17h16" />
+            </svg>
+          </span>
+          <span class="nav-label">Préstamos</span>
+        </button>
+
+        <button class="nav-item" data-t="notificaciones" id="nav-btn-notificaciones">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+          </span>
+          <span class="nav-label">Notificaciones</span>
+          <span class="nav-badge" id="sidebar-notif-badge" style="display:none;">0</span>
+        </button>
+      </nav>
+
+      <!-- Pie del sidebar -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user">
+          <div class="user-avatar">AD</div>
+          <div class="user-meta">
+            <span class="user-name">Administrador</span>
+            <span class="user-role">Servicios Telemáticos</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="main-wrapper">
+      <!-- BARRA SUPERIOR (HEADER) -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="btn-toggle-menu" id="btnToggleMenu" aria-label="Abrir o cerrar menú lateral"
+            title="Menú lateral">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" x2="20" y1="12" y2="12" />
+              <line x1="4" x2="20" y1="6" y2="6" />
+              <line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
+          </button>
+          <div class="topbar-title-group">
+            <h1 class="topbar-title" id="pageTitle">Panel Principal</h1>
+            <p class="topbar-desc" id="pageDesc">Resumen del sistema, salud de microservicios y métricas operativas en
+              tiempo real.</p>
+          </div>
+        </div>
+
+        <div class="topbar-right"></div>
+      </header>
+
+      <!-- ÁREA DE CONTENIDO (SECCIONES) -->
+      <main class="content-area">
+
+        <!-- ============================================================== -->
+        <!-- SECCIÓN: PANEL PRINCIPAL (ESTADO) -->
+        <!-- ============================================================== -->
+        <section id="estado" class="view-section">
+          <!-- Tarjetas de estadísticas generales (KPIs con datos reales) -->
+          <div class="kpi-grid">
+            <div class="kpi-card" id="kpi-libros">
+              <div class="kpi-icon-wrap kpi-blue">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                </svg>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-label">Títulos en Catálogo</span>
+                <span class="kpi-val" id="stat-total-libros">—</span>
+                <span class="kpi-sub" id="stat-libros-sub">Cargando inventario...</span>
+              </div>
+            </div>
+
+            <div class="kpi-card" id="kpi-usuarios">
+              <div class="kpi-icon-wrap kpi-indigo">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                </svg>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-label">Usuarios Activos</span>
+                <span class="kpi-val" id="stat-total-usuarios">—</span>
+                <span class="kpi-sub" id="stat-usuarios-sub">Cargando registro...</span>
+              </div>
+            </div>
+
+            <div class="kpi-card" id="kpi-prestamos">
+              <div class="kpi-icon-wrap kpi-amber">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="m16 3 4 4-4 4" />
+                  <path d="M20 7H4" />
+                  <path d="m8 21-4-4 4-4" />
+                  <path d="M4 17h16" />
+                </svg>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-label">Préstamos Activos</span>
+                <span class="kpi-val" id="stat-total-prestamos">—</span>
+                <span class="kpi-sub" id="stat-prestamos-sub">Cargando circulación...</span>
+              </div>
+            </div>
+
+            <div class="kpi-card" id="kpi-notificaciones">
+              <div class="kpi-icon-wrap kpi-purple">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                  <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+                </svg>
+              </div>
+              <div class="kpi-content">
+                <span class="kpi-label">Notificaciones</span>
+                <span class="kpi-val" id="stat-total-notifs">—</span>
+                <span class="kpi-sub" id="stat-notifs-sub">Cargando cola...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cabecera de sección de salud -->
+          <div class="section-title-bar">
+            <div>
+              <h2 class="section-heading">Estado de los Microservicios</h2>
+              <p class="section-subheading">Monitoreo continuo de salud y disponibilidad de los contenedores Docker.</p>
+            </div>
+            <span class="pulse-indicator-badge">
+              <span class="status-dot green"></span> Chequeo en vivo cada 5s
+            </span>
+          </div>
+
+          <!-- Tarjetas de microservicios -->
+          <div class="cards" id="svc"></div>
+
+          <!-- Banner de Resiliencia y Tolerancia a Fallos -->
+          <div class="callout-card">
+            <div class="callout-icon">
+              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" x2="12" y1="8" y2="12" />
+                <line x1="12" x2="12.01" y1="16" y2="16" />
+              </svg>
+            </div>
+            <div class="callout-content">
+              <h4 class="callout-title">Prueba de Tolerancia a Fallos en Vivo</h4>
+              <p class="callout-desc">
+                El microservicio de <strong>Notificaciones</strong> funciona de manera satélite y asíncrona. Si se
+                detiene con:
+                <code>docker compose stop notificaciones</code>, los préstamos y las devoluciones siguen operando sin
+                interrupción.
+                Al reiniciar el servicio, el worker procesará las notificaciones pendientes.
+              </p>
+              <div class="callout-actions">
+                <a href="http://localhost:8025" target="_blank" rel="noopener noreferrer"
+                  class="btn btn-secondary btn-sm">
+                  <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                  </svg>
+                  Abrir bandeja de correos Mailpit (puerto 8025)
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECCIÓN: CATÁLOGO DE LIBROS Y AUTORES -->
+        <!-- ============================================================== -->
+        <section id="catalogo" class="view-section" hidden>
+          <!-- Alerta de salud de catálogo si cae -->
+          <div id="cat-down-alert" class="alert-banner warning" style="display:none;">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="8" y2="12" />
+              <line x1="12" x2="12.01" y1="16" y2="16" />
+            </svg>
+            <div class="alert-content">
+              <strong>El microservicio de Catálogo se encuentra fuera de servicio.</strong>
+              <span>No es posible consultar ni administrar libros y autores en este momento. Espera a que el contenedor de catálogo se restablezca.</span>
+            </div>
+          </div>
+
+          <!-- Formularios en grid equilibrado -->
+          <div class="forms-grid">
+            <!-- Formulario: Nuevo Autor -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <svg class="panel-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  <div>
+                    <h3 class="panel-title">Nuevo Autor</h3>
+                    <p class="panel-subtitle">Registra autores para asociarlos a libros</p>
+                  </div>
+                </div>
+              </div>
+              <form id="f-autor" class="panel-form">
+                <div class="form-group">
+                  <label for="autor-nombre" class="form-label">Nombre del autor <span class="req">*</span></label>
+                  <input id="autor-nombre" name="nombre" class="form-control" placeholder="Ej: Gabriel García Márquez"
+                    required>
+                </div>
+                <div class="form-group">
+                  <label for="autor-nac" class="form-label">Nacionalidad</label>
+                  <input id="autor-nac" name="nacionalidad" class="form-control" placeholder="Ej: Colombiana">
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-autor">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                    <span>Guardar autor</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Formulario: Nuevo Libro -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <svg class="panel-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                  </svg>
+                  <div>
+                    <h3 class="panel-title">Nuevo Libro</h3>
+                    <p class="panel-subtitle">Añade obras al acervo bibliográfico</p>
+                  </div>
+                </div>
+              </div>
+              <form id="f-libro" class="panel-form">
+                <div class="form-group">
+                  <label for="libro-titulo" class="form-label">Título de la obra <span class="req">*</span></label>
+                  <input id="libro-titulo" name="titulo" class="form-control" placeholder="Ej: Cien años de soledad"
+                    required>
+                </div>
+                <div class="form-row">
+                  <div class="form-group flex-2">
+                    <label for="sel-autor" class="form-label">Autor asignado</label>
+                    <select name="autor_id" id="sel-autor" class="form-control"></select>
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="libro-ejemplares" class="form-label">Ejemplares <span class="req">*</span></label>
+                    <input id="libro-ejemplares" name="ejemplares_totales" class="form-control" type="number" min="1"
+                      value="1" title="Cantidad de ejemplares iniciales" required>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-libro">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 5v14" />
+                      <path d="M5 12h14" />
+                    </svg>
+                    <span>Guardar libro</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Panel de inventario con filtros y búsqueda -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-title-group">
+                <h3 class="table-title">Inventario de Libros</h3>
+                <span class="count-badge" id="count-libros">0 libros</span>
+              </div>
+              <div class="table-filters">
+                <div class="search-box">
+                  <svg class="search-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input type="text" id="filter-libros-search" class="search-input"
+                    placeholder="Buscar por título o autor...">
+                </div>
+                <div class="filter-pill-group">
+                  <button type="button" class="filter-pill active" data-filter-disp="all">Todos</button>
+                  <button type="button" class="filter-pill" data-filter-disp="available">Disponibles</button>
+                  <button type="button" class="filter-pill" data-filter-disp="out">Agotados</button>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive" id="t-libros"></div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECCIÓN: GESTIÓN DE USUARIOS -->
+        <!-- ============================================================== -->
+        <section id="usuarios" class="view-section" hidden>
+          <div class="forms-grid single-col">
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <svg class="panel-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                  </svg>
+                  <div>
+                    <h3 class="panel-title">Registro de Usuario Universitario</h3>
+                    <p class="panel-subtitle">Alta de estudiantes y docentes autorizados para solicitar préstamos</p>
+                  </div>
+                </div>
+              </div>
+              <form id="f-user" class="panel-form">
+                <div class="form-row-4">
+                  <div class="form-group">
+                    <label for="user-cod" class="form-label">Código / CI <span class="req">*</span></label>
+                    <input id="user-cod" name="codigo" class="form-control" placeholder="Ej: EST-2024-001 o CI"
+                      required>
+                  </div>
+                  <div class="form-group flex-2">
+                    <label for="user-nom" class="form-label">Nombre completo <span class="req">*</span></label>
+                    <input id="user-nom" name="nombre" class="form-control" placeholder="Ej: Ana María Morales"
+                      required>
+                  </div>
+                  <div class="form-group flex-2">
+                    <label for="user-mail" class="form-label">Correo institucional <span class="req">*</span></label>
+                    <input id="user-mail" name="correo" type="email" class="form-control"
+                      placeholder="usuario@universidad.edu" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="user-tipo" class="form-label">Tipo de usuario <span class="req">*</span></label>
+                    <select id="user-tipo" name="tipo" class="form-control">
+                      <option value="ESTUDIANTE">ESTUDIANTE</option>
+                      <option value="DOCENTE">DOCENTE</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-user">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <line x1="19" x2="19" y1="8" y2="14" />
+                      <line x1="22" x2="16" y1="11" y2="11" />
+                    </svg>
+                    <span>Registrar usuario</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-title-group">
+                <h3 class="table-title">Directorio de Usuarios</h3>
+                <span class="count-badge" id="count-users">0 usuarios</span>
+              </div>
+              <div class="table-filters">
+                <div class="search-box">
+                  <svg class="search-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input type="text" id="filter-users-search" class="search-input"
+                    placeholder="Buscar por código, nombre o correo...">
+                </div>
+                <div class="filter-pill-group">
+                  <button type="button" class="filter-pill active" data-filter-tipo="all">Todos</button>
+                  <button type="button" class="filter-pill" data-filter-tipo="ESTUDIANTE">Estudiantes</button>
+                  <button type="button" class="filter-pill" data-filter-tipo="DOCENTE">Docentes</button>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive" id="t-users"></div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECCIÓN: PRÉSTAMOS Y DEVOLUCIONES -->
+        <!-- ============================================================== -->
+        <section id="prestamos" class="view-section" hidden>
+          <!-- Alerta de salud de catálogo en préstamos si cae -->
+          <div id="cat-down-prestamos-alert" class="alert-banner warning" style="display:none;">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="8" y2="12" />
+              <line x1="12" x2="12.01" y1="16" y2="16" />
+            </svg>
+            <div class="alert-content">
+              <strong>El microservicio de Catálogo se encuentra fuera de servicio.</strong>
+              <span>No es posible registrar nuevos préstamos ni devoluciones hasta que el servicio de Catálogo vuelva a estar en línea. El historial de préstamos se encuentra disponible en modo consulta a continuación.</span>
+            </div>
+          </div>
+
+          <div class="forms-grid">
+            <!-- Formulario de nuevo préstamo -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <svg class="panel-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="m16 3 4 4-4 4" />
+                    <path d="M20 7H4" />
+                    <path d="m8 21-4-4 4-4" />
+                    <path d="M4 17h16" />
+                  </svg>
+                  <div>
+                    <h3 class="panel-title">Nuevo Préstamo</h3>
+                    <p class="panel-subtitle">Plazo configurable en días. Requiere ejemplares disponibles</p>
+                  </div>
+                </div>
+              </div>
+              <form id="f-prestamo" class="panel-form">
+                <div class="form-group">
+                  <label for="sel-user" class="form-label">Usuario solicitante <span class="req">*</span></label>
+                  <select name="usuario_id" id="sel-user" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="sel-libro" class="form-label">Libro a prestar <span class="req">*</span></label>
+                  <select name="libro_id" id="sel-libro" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                  <label for="input-dias-prestamo" class="form-label">Tiempo de préstamo (días) <span class="req">*</span></label>
+                  <input type="number" name="dias_prestamo" id="input-dias-prestamo" class="form-control" min="1" max="365" value="7" required placeholder="Ej. 7">
+                  <span class="form-hint" id="hint-dias-prestamo">Plazo en días antes de la fecha límite (por defecto: 7 días)</span>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-prestar">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M5 12h14" />
+                      <path d="m12 5 7 7-7 7" />
+                    </svg>
+                    <span>Prestar libro</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Seguimiento y revisión de vencimientos -->
+            <div class="panel-card">
+              <div class="panel-header">
+                <div class="panel-title-group">
+                  <svg class="panel-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <div>
+                    <h3 class="panel-title">Seguimiento y Control</h3>
+                    <p class="panel-subtitle">Filtra por estado y procesa avisos de vencimiento</p>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-form">
+                <div class="form-group">
+                  <label for="f-est" class="form-label">Estado de los préstamos</label>
+                  <select id="f-est" class="form-control">
+                    <option value="">Todos los préstamos</option>
+                    <option value="ACTIVO">Solo préstamos ACTIVOS</option>
+                    <option value="DEVUELTO">Solo préstamos DEVUELTOS</option>
+                  </select>
+                </div>
+                <div class="form-actions">
+                  <button type="button" id="btn-rev" class="btn btn-secondary"
+                    title="Envía avisos de correo a préstamos con 2 o menos días restantes y reintenta multas pendientes">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 14 10" />
+                      <path d="M12 2a10 10 0 0 1 10 10" />
+                    </svg>
+                    <span>Revisar vencimientos</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de préstamos -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-title-group">
+                <h3 class="table-title">Historial de Circulación y Préstamos</h3>
+                <span class="count-badge" id="count-prest">0 préstamos</span>
+              </div>
+              <div class="table-filters">
+                <div class="search-box">
+                  <svg class="search-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input type="text" id="filter-prest-search" class="search-input"
+                    placeholder="Buscar por usuario o título de libro...">
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive" id="t-prest"></div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECCIÓN: NOTIFICACIONES -->
+        <!-- ============================================================== -->
+        <section id="notificaciones" class="view-section" hidden>
+          <!-- Alerta de salud de notificaciones si cae -->
+          <div id="notif-down-alert" class="alert-banner warning" style="display:none;">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" x2="12" y1="8" y2="12" />
+              <line x1="12" x2="12.01" y1="16" y2="16" />
+            </svg>
+            <div class="alert-content">
+              <strong>El microservicio de Notificaciones se encuentra fuera de servicio.</strong>
+              <span>Los préstamos continúan funcionando normalmente. Puedes consultar la bandeja de correos en Mailpit
+                (puerto 8025) cuando el servicio se restablezca.</span>
+            </div>
+          </div>
+
+          <!-- Filtros de notificaciones -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-title-group">
+                <h3 class="table-title">Seguimiento de Correos y Notificaciones</h3>
+                <span class="count-badge" id="count-notif">0 registros</span>
+              </div>
+              <div class="table-filters">
+                <div class="search-box">
+                  <svg class="search-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input type="text" id="filter-notif-search" class="search-input"
+                    placeholder="Buscar destinatario o correo...">
+                </div>
+                <select id="n-est" class="form-control filter-select">
+                  <option value="">Todos los estados</option>
+                  <option value="PENDIENTE">PENDIENTE</option>
+                  <option value="ENVIADA">ENVIADA</option>
+                  <option value="FALLIDA">FALLIDA</option>
+                </select>
+                <select id="n-tipo" class="form-control filter-select">
+                  <option value="">Todos los tipos</option>
+                  <option value="PRESTAMO">PRESTAMO</option>
+                  <option value="POR_VENCER">POR_VENCER</option>
+                  <option value="MULTA">MULTA</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive" id="t-notif"></div>
+          </div>
+        </section>
+
+      </main>
+    </div>
   </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL REUTILIZABLE PARA ACCIONES Y EDICIÓN -->
+  <!-- ============================================================== -->
+  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalTitle">Título del diálogo</h3>
+        <button type="button" class="modal-close" id="modalCloseBtn" aria-label="Cerrar modal">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" x2="6" y1="6" y2="18" />
+            <line x1="6" x2="18" y1="6" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Contenido dinámico inyectado por app.js -->
+      </div>
+      <div class="modal-footer" id="modalFooter">
+        <!-- Botones dinámicos inyectados por app.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- TOAST / NOTIFICACIONES FLOTANTES -->
+  <!-- ============================================================== -->
+  <div id="toast-container" class="toast-container" role="status" aria-live="polite"></div>
+  <!-- Compatibilidad con id toast existente si algún script directo lo busca -->
+  <div id="toast" role="status" style="display:none;"></div>
+
+  <script src="app.js"></script>
 </body>
+
 </html>
