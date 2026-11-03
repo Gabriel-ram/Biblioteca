@@ -555,6 +555,52 @@
     .badge-warning { background: var(--warning-subtle); color: var(--warning-text); }
     .badge-neutral { background: #f1f5f9; color: #475569; }
 
+    /* Columna Tipo en usuarios: sólo texto sin fondo ni óvalo */
+    .user-tipo-label {
+      display: inline-block;
+      background: transparent !important;
+      border: none !important;
+      padding: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #2563eb;
+      line-height: 1.2;
+    }
+    .user-tipo-label.tipo-docente {
+      color: #7c3aed;
+    }
+    .user-tipo-label.tipo-estudiante {
+      color: #2563eb;
+    }
+
+    /* Indicador minimalista de estado (dot + texto uppercase) */
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.035em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-indicator .status-dot-mini {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-indicator.ok { color: var(--text-main); }
+    .status-indicator.ok .status-dot-mini { background: #10b981; box-shadow: 0 0 7px rgba(16, 185, 129, 0.7); }
+    .status-indicator.er { color: #881337; }
+    .status-indicator.er .status-dot-mini { background: #e11d48; box-shadow: 0 0 6px rgba(225, 29, 72, 0.55); }
+    .status-indicator.wa { color: #92400e; }
+    .status-indicator.wa .status-dot-mini { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.65); }
+
     /* Layout Columns (Panels) */
     .dual-panel {
       display: grid;
@@ -1581,8 +1627,9 @@
           <div class="book-cover-header" style="background: ${getCoverGradient(book.id)};">
             <div class="book-cover-meta">
               <span class="book-id-badge">#${book.id}</span>
-              <span class="badge ${available ? 'badge-success' : 'badge-danger'}">
-                ${available ? 'Disponible' : 'Agotado'}
+              <span class="status-indicator ${available ? 'ok' : 'er'}">
+                <span class="status-dot-mini"></span>
+                ${available ? 'DISPONIBLE' : 'AGOTADO'}
               </span>
             </div>
             <div class="book-cover-title" title="${book.titulo}">${book.titulo}</div>
@@ -1675,8 +1722,9 @@
           <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 600;">${loan.dias_prestamo || 7}d</code></td>
           <td style="color: ${isActive ? 'var(--text-main)' : 'var(--text-muted)'}; font-weight: ${isActive ? '600' : 'normal'};">${due}</td>
           <td>
-            <span class="badge ${isActive ? 'badge-warning' : 'badge-neutral'}">
-              ${isActive ? 'En Curso' : 'Devuelto'}
+            <span class="status-indicator ${isActive ? 'wa' : 'ok'}">
+              <span class="status-dot-mini"></span>
+              ${isActive ? 'ACTIVO' : 'DEVUELTO'}
             </span>
           </td>
           <td style="text-align: right;">
@@ -1736,8 +1784,8 @@
         const emailHtml = hasEmail
           ? escapeHtml(u.correo.trim())
           : '<span style="color: var(--warning-text, #b45309); font-weight: 500; font-style: italic;">(sin correo)</span>';
-        const tipoBadgeClass = u.tipo === 'DOCENTE' ? 'badge-primary' : 'badge-neutral';
-        const tipoHtml = `<span class="badge ${tipoBadgeClass}">${escapeHtml(u.tipo || 'ESTUDIANTE')}</span>`;
+        const tipoClass = u.tipo === 'DOCENTE' ? 'tipo-docente' : 'tipo-estudiante';
+        const tipoHtml = `<span class="user-tipo-label ${tipoClass}">${escapeHtml(u.tipo || 'ESTUDIANTE')}</span>`;
 
         const row = document.createElement('tr');
         row.innerHTML = `

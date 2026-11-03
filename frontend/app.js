@@ -256,7 +256,7 @@ async function loadEstado() {
         </div>
         <span class="service-status-pill ${s.ok ? 'up' : 'down'}">
           <span class="status-dot"></span>
-          ${s.ok ? 'En línea' : 'Fuera de servicio'}
+          ${s.ok ? 'EN LÍNEA' : 'FUERA DE SERVICIO'}
         </span>
       </div>
       <div class="service-card-body">
@@ -595,7 +595,7 @@ function renderTablaUsuarios() {
 
     const rows = list.map(x => {
         const isActivo = +x.activo === 1;
-        const badgeTipo = x.tipo === 'DOCENTE' ? 'badge-purple' : 'badge-info';
+        const tipoClass = x.tipo === 'DOCENTE' ? 'tipo-docente' : 'tipo-estudiante';
 
         return `
       <tr>
@@ -613,8 +613,8 @@ function renderTablaUsuarios() {
             ${esc(x.correo || '—')}
           </span>
         </td>
-        <td><span class="badge ${badgeTipo}">${esc(x.tipo)}</span></td>
-        <td>${bd(isActivo ? 'Activo' : 'Dado de baja', isActivo ? 'ok' : 'er')}</td>
+        <td><span class="user-tipo-label ${tipoClass}">${esc(x.tipo)}</span></td>
+        <td>${bd(isActivo ? 'ACTIVO' : 'INACTIVO', isActivo ? 'ok' : 'er')}</td>
         <td>
           <div class="td-actions">
             ${isActivo ? `
@@ -753,7 +753,7 @@ function renderTablaPrestamos() {
         if (!isActivo) {
             estadoBadge = bd('DEVUELTO', 'ok');
         } else if (overdue.vencido) {
-            estadoBadge = `<span class="b er" title="Superó el plazo máximo"><span class="badge-dot"></span> VENCIDO (+${overdue.dias}d)</span>`;
+            estadoBadge = bd(`VENCIDO (+${overdue.dias}d)`, 'er');
         } else {
             estadoBadge = bd('ACTIVO', 'wa');
         }
@@ -1222,7 +1222,7 @@ $('#btn-rev')?.addEventListener('click', () => {
               <span><strong>Aviso:</strong> El microservicio de notificaciones no respondió; los avisos se enviarán en la próxima ejecución.</span>
             </div>
           ` : `
-            <p class="mu" style="font-size:0.8rem;">Puedes revisar los correos generados abriendo Mailpit en el puerto 8025.</p>
+            <p class="mu" style="font-size:0.8rem;">Las notificaciones por correo han sido despachadas vía SMTP.</p>
           `}
         </div>
       `;

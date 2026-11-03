@@ -842,23 +842,44 @@ a:focus-visible {
 .service-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: 0.78rem;
+    gap: 0.55rem;
+    padding: 0;
+    background: transparent !important;
+    border: none !important;
+    font-size: 0.8rem;
     font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.service-status-pill .status-dot {
+    width: 7.5px;
+    height: 7.5px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
 }
 
 .service-status-pill.up {
-    background: var(--success-bg);
-    color: var(--success-tx);
-    border: 1px solid var(--success-border);
+    color: var(--tx-main);
+    background: transparent !important;
+    border: none !important;
+}
+
+.service-status-pill.up .status-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
 }
 
 .service-status-pill.down {
-    background: var(--danger-bg);
-    color: var(--danger-tx);
-    border: 1px solid var(--danger-border);
+    color: #701a28;
+    background: transparent !important;
+    border: none !important;
+}
+
+.service-status-pill.down .status-dot {
+    background: #e11d48;
+    box-shadow: 0 0 6px rgba(225, 29, 72, 0.55);
 }
 
 .service-card-body {
@@ -1394,7 +1415,65 @@ td.td-code {
    ETIQUETAS VISUALES / BADGES
    ============================================================================= */
 
-.b,
+/* Estados minimalistas del sistema: punto luminoso + texto uppercase (sin fondo/píldora) */
+.b {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0;
+    margin: 0;
+    background: transparent !important;
+    border: none !important;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.b .badge-dot {
+    width: 7.5px;
+    height: 7.5px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Verde: DISPONIBLE, ACTIVO, DEVUELTO, ENVIADA */
+.b.ok {
+    color: var(--tx-main);
+    background: transparent !important;
+    border: none !important;
+}
+.b.ok .badge-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+/* Rojo / Borgoña: AGOTADO, VENCIDO, FALLIDA, INACTIVO */
+.b.er {
+    color: #701a28;
+    background: transparent !important;
+    border: none !important;
+}
+.b.er .badge-dot {
+    background: #e11d48;
+    box-shadow: 0 0 6px rgba(225, 29, 72, 0.55);
+}
+
+/* Amarillo / Ámbar: ACTIVO (en préstamo), PENDIENTE */
+.b.wa {
+    color: #92400e;
+    background: transparent !important;
+    border: none !important;
+}
+.b.wa .badge-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.65);
+}
+
+/* Badges con píldora (categorías y tipos) */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -1414,24 +1493,18 @@ td.td-code {
     background: currentColor;
 }
 
-/* Verde: Disponible, Activo, Enviada */
-.b.ok,
 .badge-ok {
     background: var(--success-bg);
     color: var(--success-tx);
     border: 1px solid var(--success-border);
 }
 
-/* Rojo: Agotado, Baja, Fallida, Vencido */
-.b.er,
 .badge-er {
     background: var(--danger-bg);
     color: var(--danger-tx);
     border: 1px solid var(--danger-border);
 }
 
-/* Amarillo: Pendiente, Activo en Préstamos, Por vencer */
-.b.wa,
 .badge-wa {
     background: var(--warning-bg);
     color: var(--warning-tx);
@@ -1879,23 +1952,44 @@ td.td-code {
 .service-status-pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: 0.78rem;
+    gap: 0.55rem;
+    padding: 0;
+    background: transparent !important;
+    border: none !important;
+    font-size: 0.8rem;
     font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.service-status-pill .status-dot {
+    width: 7.5px;
+    height: 7.5px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
 }
 
 .service-status-pill.up {
-    background: var(--success-bg);
-    color: var(--success-tx);
-    border: 1px solid var(--success-border);
+    color: var(--tx-main);
+    background: transparent !important;
+    border: none !important;
+}
+
+.service-status-pill.up .status-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
 }
 
 .service-status-pill.down {
-    background: var(--danger-bg);
-    color: var(--danger-tx);
-    border: 1px solid var(--danger-border);
+    color: #701a28;
+    background: transparent !important;
+    border: none !important;
+}
+
+.service-status-pill.down .status-dot {
+    background: #e11d48;
+    box-shadow: 0 0 6px rgba(225, 29, 72, 0.55);
 }
 
 .service-card-body {
@@ -2431,7 +2525,65 @@ td.td-code {
    ETIQUETAS VISUALES / BADGES
    ============================================================================= */
 
-.b,
+/* Estados minimalistas del sistema: punto luminoso + texto uppercase (sin fondo/píldora) */
+.b {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0;
+    margin: 0;
+    background: transparent !important;
+    border: none !important;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.b .badge-dot {
+    width: 7.5px;
+    height: 7.5px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Verde: DISPONIBLE, ACTIVO, DEVUELTO, ENVIADA */
+.b.ok {
+    color: var(--tx-main);
+    background: transparent !important;
+    border: none !important;
+}
+.b.ok .badge-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+}
+
+/* Rojo / Borgoña: AGOTADO, VENCIDO, FALLIDA, INACTIVO */
+.b.er {
+    color: #701a28;
+    background: transparent !important;
+    border: none !important;
+}
+.b.er .badge-dot {
+    background: #e11d48;
+    box-shadow: 0 0 6px rgba(225, 29, 72, 0.55);
+}
+
+/* Amarillo / Ámbar: ACTIVO (en préstamo), PENDIENTE */
+.b.wa {
+    color: #92400e;
+    background: transparent !important;
+    border: none !important;
+}
+.b.wa .badge-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.65);
+}
+
+/* Badges con píldora (categorías y tipos) */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -2451,24 +2603,18 @@ td.td-code {
     background: currentColor;
 }
 
-/* Verde: Disponible, Activo, Enviada */
-.b.ok,
 .badge-ok {
     background: var(--success-bg);
     color: var(--success-tx);
     border: 1px solid var(--success-border);
 }
 
-/* Rojo: Agotado, Baja, Fallida, Vencido */
-.b.er,
 .badge-er {
     background: var(--danger-bg);
     color: var(--danger-tx);
     border: 1px solid var(--danger-border);
 }
 
-/* Amarillo: Pendiente, Activo en Préstamos, Por vencer */
-.b.wa,
 .badge-wa {
     background: var(--warning-bg);
     color: var(--warning-tx);
@@ -2913,4 +3059,28 @@ td.td-code {
     width: 13px;
     height: 13px;
     color: var(--tx-muted);
+}
+
+/* Columna Tipo en tabla de usuarios: texto limpio sin fondo ni óvalo */
+.user-tipo-label {
+    display: inline-block;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #2563eb;
+    line-height: 1.2;
+}
+
+.user-tipo-label.tipo-docente {
+    color: #7c3aed;
+}
+
+.user-tipo-label.tipo-estudiante {
+    color: #2563eb;
 }

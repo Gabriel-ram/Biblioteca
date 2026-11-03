@@ -217,36 +217,7 @@
           <!-- Tarjetas de microservicios -->
           <div class="cards" id="svc"></div>
 
-          <!-- Banner de Resiliencia y Tolerancia a Fallos -->
-          <div class="callout-card">
-            <div class="callout-icon">
-              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" x2="12" y1="8" y2="12" />
-                <line x1="12" x2="12.01" y1="16" y2="16" />
-              </svg>
-            </div>
-            <div class="callout-content">
-              <h4 class="callout-title">Prueba de Tolerancia a Fallos en Vivo</h4>
-              <p class="callout-desc">
-                El microservicio de <strong>Notificaciones</strong> funciona de manera satélite y asíncrona. Si se
-                detiene con:
-                <code>docker compose stop notificaciones</code>, los préstamos y las devoluciones siguen operando sin
-                interrupción.
-                Al reiniciar el servicio, el worker procesará las notificaciones pendientes.
-              </p>
-              <div class="callout-actions">
-                <a href="http://localhost:8025" target="_blank" rel="noopener noreferrer"
-                  class="btn btn-secondary btn-sm">
-                  <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect width="20" height="16" x="2" y="4" rx="2" />
-                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-                  </svg>
-                  Abrir bandeja de correos Mailpit (puerto 8025)
-                </a>
-              </div>
-            </div>
-          </div>
+
         </section>
 
         <!-- ============================================================== -->
@@ -601,8 +572,7 @@
             </svg>
             <div class="alert-content">
               <strong>El microservicio de Notificaciones se encuentra fuera de servicio.</strong>
-              <span>Los préstamos continúan funcionando normalmente. Puedes consultar la bandeja de correos en Mailpit
-                (puerto 8025) cuando el servicio se restablezca.</span>
+              <span>Los préstamos continúan funcionando normalmente. Las notificaciones por correo (SMTP) se procesarán cuando el servicio se restablezca.</span>
             </div>
           </div>
 
