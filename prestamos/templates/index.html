@@ -407,7 +407,7 @@
       align-items: center;
       gap: 6px;
     }
-    .filter-pill {
+    .filter-pill, .user-filter-pill {
       border: 1px solid var(--border);
       background: var(--bg-surface);
       padding: 6px 13px;
@@ -418,14 +418,35 @@
       cursor: pointer;
       transition: all 0.15s ease;
     }
-    .filter-pill:hover {
+    .filter-pill:hover, .user-filter-pill:hover {
       border-color: var(--border-hover);
       color: var(--text-main);
     }
-    .filter-pill.active {
+    .filter-pill.active, .user-filter-pill.active {
       background: #0f172a;
       color: white;
       border-color: #0f172a;
+    }
+
+    .user-info-banner {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid #3b82f6;
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .user-info-banner .banner-icon {
+      color: #2563eb;
+      flex-shrink: 0;
+    }
+    .user-info-banner .banner-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #1e3a8a;
     }
 
     /* Books Grid */
@@ -881,6 +902,10 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
           <span>Catálogo</span>
         </button>
+        <button class="nav-tab" type="button" data-view-link="catalogo-usuario" id="tab-catalogo-usuario">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <span>Vista Usuario</span>
+        </button>
         <button class="nav-tab" type="button" data-view-link="prestamos" id="tab-prestamos">
           <svg class="icon" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
           <span>Circulación</span>
@@ -983,6 +1008,55 @@
 
       <!-- Cuadrícula de libros -->
       <div id="books-grid" class="books-grid"></div>
+    </section>
+
+    <!-- VISTA: CATÁLOGO PARA USUARIOS / LECTORES (SOLO CONSULTA / CON FILTROS Y UNIDADES) -->
+    <section class="view" id="view-catalogo-usuario" hidden>
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2>Catálogo de Consulta para Usuarios</h2>
+            <span class="badge badge-neutral" style="font-size: 11px; padding: 3px 8px; font-weight: 600;">Solo Consulta</span>
+          </div>
+          <p>Explora las obras de la biblioteca y consulta las unidades físicas disponibles en tiempo real.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-icon" type="button" data-refresh title="Actualizar datos">
+            <svg class="icon" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner Informativo -->
+      <div class="user-info-banner">
+        <svg class="icon banner-icon icon-lg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <div class="banner-text">
+          <strong>Modo Consulta para Lectores:</strong> Esta sección permite revisar el catálogo y verificar cuántas unidades disponibles hay en estantería. <em>Nota: Esta es una vista informativa; no es posible solicitar préstamos desde aquí.</em> Acércate al mostrador de circulación para tramitar tus préstamos.
+        </div>
+      </div>
+
+      <!-- Toolbar de búsqueda y filtros -->
+      <div class="toolbar-card" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; flex: 1; min-width: 280px;">
+          <div class="search-box" style="flex: 1; min-width: 240px;">
+            <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input id="user-book-search" class="search-input" type="search" placeholder="Buscar por título, autor o identificador…">
+          </div>
+          <div style="min-width: 190px;">
+            <select id="user-author-filter" class="form-control" style="height: 40px; font-size: 13px;">
+              <option value="">Todos los autores</option>
+            </select>
+          </div>
+        </div>
+        <div class="filter-pills" id="user-filter-pills">
+          <button class="user-filter-pill active" data-user-filter="all">Todos (<span id="user-count-all">0</span>)</button>
+          <button class="user-filter-pill" data-user-filter="available">Disponibles (<span id="user-count-avail">0</span>)</button>
+          <button class="user-filter-pill" data-user-filter="out">Agotados (<span id="user-count-out">0</span>)</button>
+        </div>
+      </div>
+
+      <!-- Cuadrícula de libros para usuario -->
+      <div id="user-books-grid" class="books-grid"></div>
     </section>
 
     <!-- VISTA 2: CIRCULACIÓN (PRÉSTAMOS Y DEVOLUCIONES) -->
@@ -1465,6 +1539,21 @@
         }
       });
       if (currentVal) bookSelect.value = currentVal;
+
+      const userAuthorFilter = document.getElementById('user-author-filter');
+      if (userAuthorFilter) {
+        const curUserVal = userAuthorFilter.value;
+        userAuthorFilter.replaceChildren(new Option('Todos los autores', ''));
+        const seenUser = new Set();
+        allAuthors.forEach(author => {
+          const norm = (author.nombre || '').trim().toLowerCase();
+          if (norm && !seenUser.has(norm)) {
+            seenUser.add(norm);
+            userAuthorFilter.add(new Option(author.nombre, author.id));
+          }
+        });
+        if (curUserVal) userAuthorFilter.value = curUserVal;
+      }
     }
 
     function populateUserSelects() {
@@ -1515,6 +1604,114 @@
         const bookTitle = book ? book.titulo : `Libro #${loan.libro_id}`;
         const due = loan.fecha_limite ? loan.fecha_limite.slice(0, 10) : '';
         returnSelect.add(new Option(`Préstamo #${loan.id} · ${loan.usuario} (CI: ${loan.ci}) — «${bookTitle}»`, loan.id));
+      });
+    }
+
+    let currentUserFilter = 'all';
+
+    // Render Books for Reader/User View (Read-only, no loans, with available units highlighted)
+    function renderUserBooks(books) {
+      const grid = document.getElementById('user-books-grid');
+      if (!grid) return;
+      const searchInput = document.getElementById('user-book-search');
+      const authorSelect = document.getElementById('user-author-filter');
+      const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+      const selectedAuthor = authorSelect ? authorSelect.value : '';
+
+      const totalCount = books.length;
+      const availCount = books.filter(b => Number(b.ejemplares_disponibles) > 0).length;
+      const outCount = totalCount - availCount;
+
+      const countAll = document.getElementById('user-count-all');
+      const countAvail = document.getElementById('user-count-avail');
+      const countOut = document.getElementById('user-count-out');
+      if (countAll) countAll.textContent = totalCount;
+      if (countAvail) countAvail.textContent = availCount;
+      if (countOut) countOut.textContent = outCount;
+
+      let filtered = books.filter(b => {
+        const matchesQuery = `${b.titulo} ${authorName(b.autor_id)} #${b.id}`.toLowerCase().includes(query);
+        if (!matchesQuery) return false;
+        if (selectedAuthor && String(b.autor_id) !== String(selectedAuthor)) return false;
+        if (currentUserFilter === 'available') return Number(b.ejemplares_disponibles) > 0;
+        if (currentUserFilter === 'out') return Number(b.ejemplares_disponibles) <= 0;
+        return true;
+      });
+
+      grid.replaceChildren();
+
+      if (!filtered.length) {
+        grid.innerHTML = `
+          <div class="empty-box" style="grid-column: 1 / -1;">
+            <div class="empty-icon-circle">
+              <svg class="icon icon-xl" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </div>
+            <div class="empty-title">${books.length ? 'Sin coincidencias' : 'El catálogo está vacío'}</div>
+            <div class="empty-subtitle">${books.length ? 'No hay libros que cumplan con la búsqueda o filtro seleccionado.' : 'Aún no se han registrado obras en el catálogo.'}</div>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach((book) => {
+        const available = Number(book.ejemplares_disponibles) > 0;
+        const total = Number(book.ejemplares_totales) || 1;
+        const disp = Number(book.ejemplares_disponibles) || 0;
+        const percent = Math.min(100, Math.max(0, Math.round((disp / total) * 100)));
+
+        const card = document.createElement('article');
+        card.className = 'book-item-card';
+
+        card.innerHTML = `
+          <div class="book-cover-header" style="background: ${getCoverGradient(book.id)};">
+            <div class="book-cover-meta">
+              <span class="book-id-badge">#${book.id}</span>
+              <span class="badge ${available ? 'badge-success' : 'badge-danger'}">
+                ${available ? 'Disponible' : 'Agotado'}
+              </span>
+            </div>
+            <div class="book-cover-title" title="${book.titulo}">${book.titulo}</div>
+          </div>
+          <div class="book-body">
+            <div class="book-author-line">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>${authorName(book.autor_id)}</span>
+            </div>
+            <div class="stock-container">
+              <div class="stock-info">
+                <span>Unidades Disponibles</span>
+                <span style="color: ${available ? 'var(--text-main)' : 'var(--danger)'};">
+                  <strong>${disp}</strong> de ${total} ejemplares
+                </span>
+              </div>
+              <div class="stock-bar-track">
+                <div class="stock-bar-fill" style="width: ${percent}%; background: ${available ? '#10b981' : '#ef4444'};"></div>
+              </div>
+              ${available ? `
+                <div style="font-size: 11px; color: #166534; font-weight: 500; display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>${disp} unidad${disp > 1 ? 'es' : ''} disponible${disp > 1 ? 's' : ''} en sala</span>
+                </div>
+              ` : `
+                <div style="font-size: 11px; color: #991b1b; font-weight: 500; display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                  <svg class="icon icon-sm" viewBox="0 0 24 24" style="width: 14px; height: 14px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                  <span>Todos los ejemplares prestados</span>
+                </div>
+              `}
+            </div>
+            <div style="margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--text-muted);">
+              <span style="display: flex; align-items: center; gap: 4px;">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" style="width: 13px; height: 13px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Solo consulta
+              </span>
+              <span style="font-weight: 600; color: ${available ? 'var(--text-main)' : 'var(--text-muted)'};">
+                En sala: ${disp} / Total: ${total}
+              </span>
+            </div>
+          </div>
+        `;
+
+        grid.appendChild(card);
       });
     }
 
@@ -1885,6 +2082,7 @@
 
         populateAuthorSelects();
         renderBooks(allBooks);
+        renderUserBooks(allBooks);
         renderLoans(allLoans);
         renderUsers(allUsers);
         renderNotifications(data.notificaciones || []);
@@ -2117,6 +2315,25 @@
 
     document.getElementById('book-search').addEventListener('input', () => renderBooks(allBooks));
 
+    const userBookSearch = document.getElementById('user-book-search');
+    if (userBookSearch) {
+      userBookSearch.addEventListener('input', () => renderUserBooks(allBooks));
+    }
+
+    const userAuthorFilter = document.getElementById('user-author-filter');
+    if (userAuthorFilter) {
+      userAuthorFilter.addEventListener('change', () => renderUserBooks(allBooks));
+    }
+
+    document.querySelectorAll('.user-filter-pill').forEach((pill) => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('.user-filter-pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        currentUserFilter = pill.dataset.userFilter;
+        renderUserBooks(allBooks);
+      });
+    });
+
     // CI numeric restriction (solo para ci-input si existiera)
     const ciInputEl = document.getElementById('ci-input');
     if (ciInputEl) {
@@ -2124,6 +2341,38 @@
         e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
       });
     }
+
+    // Detección en vivo de títulos duplicados en modal de libro
+    const bookTitleInput = document.getElementById('book-form-title');
+    const bookAuthorInput = document.getElementById('book-form-author');
+    function checkBookDupModal() {
+      const isEdit = Boolean(document.getElementById('book-form-id').value);
+      if (isEdit) return;
+      const tVal = (bookTitleInput ? bookTitleInput.value : '').trim().toLowerCase();
+      const aVal = bookAuthorInput && bookAuthorInput.value ? Number(bookAuthorInput.value) : null;
+      let hint = document.getElementById('book-dup-modal-hint');
+      if (!tVal) {
+        if (hint) hint.remove();
+        return;
+      }
+      const match = allBooks.find(b => 
+        b.titulo.trim().toLowerCase() === tVal && 
+        ((aVal === null && !b.autor_id) || (aVal !== null && Number(b.autor_id) === aVal))
+      );
+      if (match) {
+        if (!hint) {
+          hint = document.createElement('div');
+          hint.id = 'book-dup-modal-hint';
+          hint.style.cssText = 'font-size:12px; color:#2563eb; margin-top:4px; font-weight:500;';
+          bookTitleInput.parentElement.appendChild(hint);
+        }
+        hint.textContent = `ℹ️ Obra ya registrada (#${match.id}, ${match.ejemplares_totales} ejemplares). Al guardar, se sumarán las unidades a esta obra.`;
+      } else if (hint) {
+        hint.remove();
+      }
+    }
+    if (bookTitleInput) bookTitleInput.addEventListener('input', checkBookDupModal);
+    if (bookAuthorInput) bookAuthorInput.addEventListener('change', checkBookDupModal);
 
     const loanDaysInput = document.getElementById('loan-days-input');
     const loanDaysHint = document.getElementById('loan-days-hint');
@@ -2202,6 +2451,8 @@
       };
       if (isEdit) {
         payload.ejemplares_disponibles = Number(document.getElementById('book-form-disponibles').value);
+      } else {
+        payload.sumar_si_existe = true;
       }
 
       try {
@@ -2215,7 +2466,11 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'No se pudo guardar el libro.');
         document.getElementById('book-modal').close();
-        showToast(isEdit ? `«${data.titulo}» actualizado correctamente.` : `«${data.titulo}» añadido al catálogo.`);
+        if (!isEdit && data.ejemplares_totales > payload.ejemplares_totales) {
+          showToast(`El título ya existía. Se sumaron ${payload.ejemplares_totales} unidades (total: ${data.ejemplares_totales} ejemplares).`);
+        } else {
+          showToast(isEdit ? `«${data.titulo}» actualizado correctamente.` : `«${data.titulo}» añadido al catálogo.`);
+        }
         await loadData(true);
       } catch (err) {
         showToast(err.message, 'error');
@@ -2414,13 +2669,14 @@
     });
 
     // Hash navigation
+    const validViews = ['libros', 'catalogo-usuario', 'prestamos', 'usuarios', 'notificaciones'];
     window.addEventListener('hashchange', () => {
       const view = window.location.hash.slice(1);
-      if (['libros', 'prestamos', 'usuarios', 'notificaciones'].includes(view)) showView(view);
+      if (validViews.includes(view)) showView(view);
     });
 
     const initView = window.location.hash.slice(1);
-    showView(['libros', 'prestamos', 'usuarios', 'notificaciones'].includes(initView) ? initView : 'libros');
+    showView(validViews.includes(initView) ? initView : 'libros');
     loadData();
   </script>
 </body>

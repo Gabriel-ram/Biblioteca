@@ -98,6 +98,19 @@
           <span class="nav-label">Notificaciones</span>
           <span class="nav-badge" id="sidebar-notif-badge" style="display:none;">0</span>
         </button>
+
+        <div class="nav-group-label" style="margin-top: 14px;">VISTA PÚBLICA</div>
+
+        <button class="nav-item" data-t="vista-usuario" id="nav-btn-vista-usuario">
+          <span class="nav-icon">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          </span>
+          <span class="nav-label">Vista Usuario</span>
+        </button>
       </nav>
 
       <!-- Pie del sidebar -->
@@ -638,6 +651,53 @@
               </div>
             </div>
             <div class="table-responsive" id="t-notif"></div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- SECCIÓN: VISTA DE USUARIO (SOLO LECTURA / CONSULTA)            -->
+        <!-- ============================================================== -->
+        <section id="vista-usuario" class="view-section" hidden>
+          <div class="alert-banner info" style="margin-bottom: 20px;">
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <div class="alert-content">
+              <strong>Catálogo de Consulta para Lectores y Estudiantes</strong>
+              <span>Esta vista es exclusivamente informativa para consultar obras y unidades disponibles en sala. No es posible solicitar préstamos directos desde aquí (deben tramitarse en el mostrador).</span>
+            </div>
+          </div>
+
+          <!-- Panel de inventario con filtros y unidades para usuario -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <div class="table-title-group">
+                <h3 class="table-title">Consulta de Obras y Ejemplares en Sala</h3>
+                <span class="count-badge" id="count-user-libros">0 libros</span>
+              </div>
+              <div class="table-filters" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                <div class="search-box">
+                  <svg class="search-icon svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
+                  <input type="text" id="filter-user-search" class="search-input" placeholder="Buscar por título, autor o código...">
+                </div>
+                <div style="min-width: 180px;">
+                  <select id="filter-user-autor" class="form-control" style="height: 38px; font-size: 13px; padding: 4px 10px;">
+                    <option value="">Todos los autores</option>
+                  </select>
+                </div>
+                <div class="filter-pill-group" id="filter-user-pills">
+                  <button type="button" class="filter-pill active" data-user-filter-disp="all">Todos</button>
+                  <button type="button" class="filter-pill" data-user-filter-disp="available">Disponibles</button>
+                  <button type="button" class="filter-pill" data-user-filter-disp="out">Agotados</button>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive" id="t-user-libros"></div>
           </div>
         </section>
 

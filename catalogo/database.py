@@ -59,5 +59,35 @@ def init_db():
             cursor.execute("UPDATE libros SET autor_id = ? WHERE autor_id = ?", (keeper_id, dup_id))
             cursor.execute("DELETE FROM autores WHERE id = ?", (dup_id,))
 
+    # Deduplicar libros existentes (mismo título normalizado y autor) consolidando ejemplares
+    cursor.execute('''
+        SELECT MIN(id) as keeper_id, LOWER(TRIM(titulo)) as norm_title, COALESCE(autor_id, 0) as norm_autor
+        FROM libros
+        GROUP BY LOWER(TRIM(titulo)), COALESCE(autor_id, 0)
+        HAVING COUNT(*) > 1
+    ''')
+    dup_libros_groups = cursor.fetchall()
+    for row in dup_libros_groups:
+        keeper_id = row['keeper_id']
+        norm_title = row['norm_title']
+        norm_autor = row['norm_autor']
+        if norm_autor == 0:
+            cursor.execute("SELECT id, ejemplares_totales, ejemplares_disponibles FROM libros WHERE LOWER(TRIM(titulo)) = ? AND autor_id IS NULL AND id != ?", (norm_title, keeper_id))
+        else:
+            cursor.execute("SELECT id, ejemplares_totales, ejemplares_disponibles FROM libros WHERE LOWER(TRIM(titulo)) = ? AND autor_id = ? AND id != ?", (norm_title, norm_autor, keeper_id))
+        dup_rows = cursor.fetchall()
+        extra_tot = sum(d['ejemplares_totales'] for d in dup_rows)
+        extra_disp = sum(d['ejemplares_disponibles'] for d in dup_rows)
+        cursor.execute("UPDATE libros SET ejemplares_totales = ejemplares_totales + ?, ejemplares_disponibles = ejemplares_disponibles + ? WHERE id = ?", (extra_tot, extra_disp, keeper_id))
+        cursor.execute("UPDATE libros SET estado = CASE WHEN ejemplares_disponibles > 0 THEN 'DISPONIBLE' ELSE 'AGOTADO' END WHERE id = ?", (keeper_id,))
+        for dup in dup_rows:
+            cursor.execute("DELETE FROM libros WHERE id = ?", (dup['id'],))
+
+    # Índice único para garantizar que no se inserten libros duplicados por autor
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_libros_titulo_autor
+        ON libros(LOWER(TRIM(titulo)), COALESCE(autor_id, 0))
+    ''')
+
     conn.commit()
     conn.close()

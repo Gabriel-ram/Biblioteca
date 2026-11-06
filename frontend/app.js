@@ -383,6 +383,135 @@ async function cargarMetricasDashboard(serviciosSalud) {
 }
 
 // =============================================================================
+// VISTA DE USUARIO / LECTOR (CONSULTA Y DISPONIBILIDAD DE UNIDADES)
+// =============================================================================
+
+async function loadVistaUsuario() {
+    try {
+        const [autores, libros] = await Promise.all([
+            api(API.cat + '/autores'),
+            api(API.cat + '/libros')
+        ]);
+        cache.libros = libros || [];
+        cache.autoresMap = Object.fromEntries((autores || []).map(a => [a.id, a.nombre]));
+
+        const selAutor = $('#filter-user-autor');
+        if (selAutor) {
+            const curVal = selAutor.value;
+            selAutor.innerHTML = '<option value="">Todos los autores</option>' +
+                (autores || []).map(a => `<option value="${a.id}">${esc(a.nombre)}</option>`).join('');
+            if (curVal) selAutor.value = curVal;
+        }
+
+        renderTablaUserLibros();
+    } catch (err) {
+        const countBadge = $('#count-user-libros');
+        if (countBadge) countBadge.textContent = '0 libros (fuera de línea)';
+        const container = $('#t-user-libros');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                  <h4 class="empty-state-title">Servicio de Catálogo Inaccesible</h4>
+                  <p class="empty-state-desc">No se pudo conectar con el microservicio de Catálogo para cargar los libros.</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderTablaUserLibros() {
+    const searchVal = ($('#filter-user-search')?.value || '').toLowerCase().trim();
+    const autorFilter = $('#filter-user-autor')?.value || '';
+    const activePill = $('.filter-pill[data-user-filter-disp].active');
+    const dispFilter = activePill ? activePill.dataset.userFilterDisp : 'all';
+
+    let list = (cache.libros || []).filter(libro => {
+        const autorNombre = cache.autoresMap[libro.autor_id] || '';
+        const matchSearch = !searchVal ||
+            String(libro.titulo || '').toLowerCase().includes(searchVal) ||
+            autorNombre.toLowerCase().includes(searchVal) ||
+            String(libro.id).includes(searchVal);
+
+        if (!matchSearch) return false;
+        if (autorFilter && String(libro.autor_id) !== String(autorFilter)) return false;
+
+        if (dispFilter === 'available') return Number(libro.ejemplares_disponibles) > 0;
+        if (dispFilter === 'out') return Number(libro.ejemplares_disponibles) <= 0;
+        return true;
+    });
+
+    const countBadge = $('#count-user-libros');
+    if (countBadge) countBadge.textContent = `${list.length} de ${(cache.libros || []).length} libros`;
+
+    const container = $('#t-user-libros');
+    if (!container) return;
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+              <h4 class="empty-state-title">No se encontraron libros</h4>
+              <p class="empty-state-desc">Ningún libro coincide con el criterio de búsqueda o filtros seleccionados.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const rows = list.map(x => {
+        const autor = cache.autoresMap[x.autor_id] || '—';
+        const isDisponible = x.estado === 'DISPONIBLE' && Number(x.ejemplares_disponibles) > 0;
+        const total = Number(x.ejemplares_totales) || 1;
+        const disp = Number(x.ejemplares_disponibles) || 0;
+        const ratio = total > 0 ? Math.round((disp / total) * 100) : 0;
+
+        return `
+            <tr>
+              <td class="td-id">#${x.id}</td>
+              <td>
+                <div class="td-title-cell">
+                  <svg class="svg-icon" style="color:var(--primary); width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                  </svg>
+                  <strong style="color:var(--text);">${esc(x.titulo)}</strong>
+                </div>
+              </td>
+              <td>${esc(autor)}</td>
+              <td>
+                <div class="stock-pill" title="${disp} de ${total} unidades disponibles">
+                  <span style="font-weight: 600;">${disp} de ${total} disp.</span>
+                  <div class="stock-bar-wrap">
+                    <div class="stock-bar-fill ${ratio === 0 ? 'empty' : ''}" style="width: ${ratio}%; ${isDisponible ? 'background: #10b981;' : 'background: #ef4444;'}"></div>
+                  </div>
+                </div>
+              </td>
+              <td>${bd(isDisponible ? 'DISPONIBLE' : 'AGOTADO', isDisponible ? 'ok' : 'er')}</td>
+              <td>
+                <span class="badge badge-neutral" style="font-size: 11px;">Solo consulta</span>
+              </td>
+            </tr>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Título</th>
+              <th>Autor</th>
+              <th>Unidades Disponibles</th>
+              <th>Estado</th>
+              <th>Acceso</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+    `;
+}
+
+// =============================================================================
 // 2. CATÁLOGO DE LIBROS Y AUTORES
 // =============================================================================
 
@@ -963,7 +1092,8 @@ const tabs = {
     catalogo: loadCatalogo,
     usuarios: loadUsuarios,
     prestamos: loadPrestamos,
-    notificaciones: loadNotifs
+    notificaciones: loadNotifs,
+    'vista-usuario': loadVistaUsuario
 };
 
 const tabMetas = {
@@ -986,6 +1116,10 @@ const tabMetas = {
     notificaciones: {
         title: 'Seguimiento de Notificaciones',
         desc: 'Historial de correos automáticos emitidos, reintentos de entrega y tolerancia a fallos.'
+    },
+    'vista-usuario': {
+        title: 'Catálogo de Lectores — Vista de Usuario',
+        desc: 'Consulta pública de obras y unidades físicas disponibles en sala. Vista exclusiva de información (sin préstamos directos).'
     }
 };
 
@@ -1112,15 +1246,19 @@ setupForm('#f-autor', '#btn-save-autor', async d => {
     await loadCatalogo();
 }, 'Autor guardado exitosamente');
 
-// 2. Guardar Libro
+// 2. Guardar Libro (con detección y suma inteligente de ejemplares para evitar duplicados)
 setupForm('#f-libro', '#btn-save-libro', async d => {
     const payload = {
-        titulo: d.titulo,
-        ejemplares_totales: +d.ejemplares_totales || 1
+        titulo: (d.titulo || '').trim(),
+        ejemplares_totales: +d.ejemplares_totales || 1,
+        sumar_si_existe: true
     };
     if (d.autor_id) payload.autor_id = +d.autor_id;
-    await api(API.cat + '/libros', 'POST', payload);
+    const res = await api(API.cat + '/libros', 'POST', payload);
     await loadCatalogo();
+    if (res && res.ejemplares_totales > (+d.ejemplares_totales || 1)) {
+        toast(`La obra ya existía; se sumaron ${+d.ejemplares_totales || 1} unidades a su inventario (total: ${res.ejemplares_totales}).`);
+    }
 }, 'Libro incorporado al catálogo exitosamente');
 
 // 3. Registrar Usuario
@@ -1166,6 +1304,47 @@ setTimeout(actualizarHintDiasPrestamo, 100);
 // =============================================================================
 // FILTROS Y EVENTOS EN VIVO
 // =============================================================================
+
+// Filtros y búsquedas de Vista Usuario
+$('#filter-user-search')?.addEventListener('input', renderTablaUserLibros);
+$('#filter-user-autor')?.addEventListener('change', renderTablaUserLibros);
+$$('.filter-pill[data-user-filter-disp]').forEach(pill => {
+    pill.onclick = () => {
+        $$('.filter-pill[data-user-filter-disp]').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        renderTablaUserLibros();
+    };
+});
+
+// Detección en vivo de títulos duplicados en formulario de nuevo libro
+const inpLibroTitulo = $('#libro-titulo');
+const selLibroAutor = $('#sel-autor');
+function verificarLibroDuplicado() {
+    const tit = (inpLibroTitulo?.value || '').trim().toLowerCase();
+    const autId = selLibroAutor?.value ? +selLibroAutor.value : null;
+    let hint = $('#hint-libro-duplicado');
+    if (!tit) {
+        if (hint) hint.remove();
+        return;
+    }
+    const match = (cache.libros || []).find(b => 
+        b.titulo.trim().toLowerCase() === tit && 
+        ((autId === null && !b.autor_id) || (autId !== null && b.autor_id === autId))
+    );
+    if (match) {
+        if (!hint) {
+            hint = document.createElement('div');
+            hint.id = 'hint-libro-duplicado';
+            hint.style.cssText = 'font-size:12px; color:#2563eb; margin-top:5px; font-weight:500; display:flex; align-items:center; gap:4px;';
+            inpLibroTitulo.parentElement.appendChild(hint);
+        }
+        hint.innerHTML = `<svg class="svg-icon" style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> Obra ya registrada (#${match.id}, ${match.ejemplares_totales} ejemplares). Al guardar, se sumarán las nuevas unidades sin duplicar la obra.`;
+    } else if (hint) {
+        hint.remove();
+    }
+}
+inpLibroTitulo?.addEventListener('input', verificarLibroDuplicado);
+selLibroAutor?.addEventListener('change', verificarLibroDuplicado);
 
 // Filtros y búsquedas de Catálogo
 $('#filter-libros-search')?.addEventListener('input', renderTablaLibros);

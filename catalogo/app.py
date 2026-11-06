@@ -66,17 +66,22 @@ def crear_libro():
     titulo = data.get('titulo')
     autor_id = data.get('autor_id')
     ejemplares_totales = data.get('ejemplares_totales', 1)
+    sumar_si_existe = data.get('sumar_si_existe', False) or (request.args.get('sumar_si_existe') in ['true', '1'])
 
     if not titulo:
         return jsonify({"error": "El campo 'titulo' es obligatorio"}), 400
+
+    titulo = str(titulo).strip()
+    if not titulo:
+        return jsonify({"error": "El campo 'titulo' no puede estar vacío"}), 400
 
     try:
         ejemplares_totales = int(ejemplares_totales)
     except (ValueError, TypeError):
         return jsonify({"error": "'ejemplares_totales' debe ser un número entero"}), 400
 
-    ejemplares_disponibles = max(0, ejemplares_totales)
-    estado = 'DISPONIBLE' if ejemplares_disponibles > 0 else 'AGOTADO'
+    if ejemplares_totales < 1:
+        return jsonify({"error": "'ejemplares_totales' debe ser mayor o igual a 1"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -86,6 +91,49 @@ def crear_libro():
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": f"El autor con ID {autor_id} no existe"}), 400
+
+    # Comprobar si ya existe un libro con el mismo título (normalizado) y autor
+    if autor_id is not None:
+        cursor.execute(
+            "SELECT * FROM libros WHERE LOWER(TRIM(titulo)) = LOWER(?) AND autor_id = ?",
+            (titulo, autor_id)
+        )
+    else:
+        cursor.execute(
+            "SELECT * FROM libros WHERE LOWER(TRIM(titulo)) = LOWER(?) AND autor_id IS NULL",
+            (titulo,)
+        )
+    existente = cursor.fetchone()
+
+    if existente:
+        existente_dict = dict(existente)
+        if sumar_si_existe:
+            nuevos_totales = existente_dict['ejemplares_totales'] + ejemplares_totales
+            nuevos_disp = existente_dict['ejemplares_disponibles'] + ejemplares_totales
+            nuevo_estado = 'DISPONIBLE' if nuevos_disp > 0 else 'AGOTADO'
+            cursor.execute(
+                """
+                UPDATE libros
+                SET ejemplares_totales = ?, ejemplares_disponibles = ?, estado = ?
+                WHERE id = ?
+                """,
+                (nuevos_totales, nuevos_disp, nuevo_estado, existente_dict['id'])
+            )
+            conn.commit()
+            cursor.execute("SELECT * FROM libros WHERE id = ?", (existente_dict['id'],))
+            libro = dict(cursor.fetchone())
+            conn.close()
+            return jsonify(libro), 200
+        else:
+            conn.close()
+            return jsonify({
+                "error": f"Ya existe una obra registrada con el título '{existente_dict['titulo']}' para este autor (ID: {existente_dict['id']}).",
+                "libro_existente": existente_dict,
+                "sugerencia": "Para añadir más unidades, modifica los ejemplares del libro existente o utiliza 'sumar_si_existe: true'."
+            }), 409
+
+    ejemplares_disponibles = max(0, ejemplares_totales)
+    estado = 'DISPONIBLE' if ejemplares_disponibles > 0 else 'AGOTADO'
 
     cursor.execute(
         """
@@ -154,6 +202,25 @@ def actualizar_libro(libro_id):
         if not cursor.fetchone():
             conn.close()
             return jsonify({"error": f"El autor con ID {autor_id} no existe"}), 400
+
+    # Comprobar que el nuevo título/autor no colisione con otro libro ya registrado
+    titulo_norm = str(titulo).strip()
+    if autor_id is not None:
+        cursor.execute(
+            "SELECT id, titulo FROM libros WHERE LOWER(TRIM(titulo)) = LOWER(?) AND autor_id = ? AND id != ?",
+            (titulo_norm, autor_id, libro_id)
+        )
+    else:
+        cursor.execute(
+            "SELECT id, titulo FROM libros WHERE LOWER(TRIM(titulo)) = LOWER(?) AND autor_id IS NULL AND id != ?",
+            (titulo_norm, libro_id)
+        )
+    colision = cursor.fetchone()
+    if colision:
+        conn.close()
+        return jsonify({
+            "error": f"Ya existe otro libro con el título '{colision['titulo']}' para este autor (ID: {colision['id']})"
+        }), 409
 
     total_anterior = libro_actual['ejemplares_totales']
     disponibles_anterior = libro_actual['ejemplares_disponibles']
