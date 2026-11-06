@@ -1,3 +1,5 @@
+const PAISES = ["Afganistán", "Albania", "Alemania", "Andorra", "Angola", "Antigua y Barbuda", "Arabia Saudita", "Argelia", "Argentina", "Armenia", "Australia", "Austria", "Azerbaiyán", "Bahamas", "Bangladés", "Barbados", "Baréin", "Bélgica", "Belice", "Benín", "Bielorrusia", "Birmania (Myanmar)", "Bolivia", "Bosnia y Herzegovina", "Botsuana", "Brasil", "Brunéi", "Bulgaria", "Burkina Faso", "Burundi", "Bután", "Cabo Verde", "Camboya", "Camerún", "Canadá", "Catar", "Chad", "Chile", "China", "Chipre", "Colombia", "Comoras", "Corea del Norte", "Corea del Sur", "Costa de Marfil", "Costa Rica", "Croacia", "Cuba", "Dinamarca", "Dominica", "Ecuador", "Egipto", "El Salvador", "Emiratos Árabes Unidos", "Eritrea", "Eslovaquia", "Eslovenia", "España", "Estados Unidos", "Estonia", "Esuatini", "Etiopía", "Filipinas", "Finlandia", "Fiyi", "Francia", "Gabón", "Gambia", "Georgia", "Ghana", "Granada", "Grecia", "Guatemala", "Guinea", "Guinea Ecuatorial", "Guinea-Bisáu", "Guyana", "Haití", "Honduras", "Hungría", "India", "Indonesia", "Irak", "Irán", "Irlanda", "Islandia", "Islas Marshall", "Islas Salomón", "Israel", "Italia", "Jamaica", "Japón", "Jordania", "Kazajistán", "Kenia", "Kirguistán", "Kiribati", "Kuwait", "Laos", "Lesoto", "Letonia", "Líbano", "Liberia", "Libia", "Liechtenstein", "Lituania", "Luxemburgo", "Macedonia del Norte", "Madagascar", "Malasia", "Malaui", "Maldivas", "Malí", "Malta", "Marruecos", "Mauricio", "Mauritania", "México", "Micronesia", "Moldavia", "Mónaco", "Mongolia", "Montenegro", "Mozambique", "Namibia", "Nauru", "Nepal", "Nicaragua", "Níger", "Nigeria", "Noruega", "Nueva Zelanda", "Omán", "Pakistán", "Palaos", "Panamá", "Papúa Nueva Guinea", "Paraguay", "Países Bajos", "Perú", "Polonia", "Portugal", "Reino Unido", "República Centroafricana", "República Checa", "República del Congo", "República Democrática del Congo", "República Dominicana", "Ruanda", "Rumania", "Rusia", "Samoa", "San Cristóbal y Nieves", "San Marino", "San Vicente y las Granadinas", "Santa Lucía", "Santo Tomé y Príncipe", "Senegal", "Serbia", "Seychelles", "Sierra Leona", "Singapur", "Siria", "Somalia", "Sri Lanka", "Sudáfrica", "Sudán", "Sudán del Sur", "Suecia", "Suiza", "Surinam", "Tailandia", "Tanzania", "Tayikistán", "Timor Oriental", "Togo", "Tonga", "Trinidad y Tobago", "Túnez", "Turkmenistán", "Turquía", "Tuvalu", "Ucrania", "Uganda", "Uruguay", "Uzbekistán", "Vanuatu", "Venezuela", "Vietnam", "Yemen", "Yibuti", "Zambia", "Zimbabue"];
+
 /**
  * BiblioTech — Sistema de Gestión de Biblioteca Universitaria
  * Controlador Frontend Modernizado
@@ -167,31 +169,52 @@ async function api(url, method = 'GET', body = null) {
 
     if (!r.ok) {
         const errorMsg = (data && (data.error || data.mensaje || data.detalle)) || `Error HTTP ${r.status}`;
-        throw new Error(errorMsg);
+        const err = new Error(errorMsg);
+        err.status = r.status;
+        err.data = data;
+        throw err;
     }
 
     return data;
 }
 
-// Formateo de fecha legible
+// Formateo de fecha legible inmune a desfases de zona horaria (UTC vs Local)
 function formatearFecha(isoDate) {
     if (!isoDate) return '—';
     try {
-        const d = new Date(isoDate);
-        if (isNaN(d.getTime())) return String(isoDate).slice(0, 10);
-        return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+        const str = String(isoDate).trim();
+        const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+            const y = match[1];
+            const m = match[2];
+            const d = match[3];
+            const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+            const mesIdx = parseInt(m, 10) - 1;
+            if (mesIdx >= 0 && mesIdx < 12) {
+                return `${d} ${meses[mesIdx]} ${y}`;
+            }
+        }
+        const dt = new Date(str);
+        if (isNaN(dt.getTime())) return str.slice(0, 10);
+        return dt.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
         return String(isoDate).slice(0, 10);
     }
 }
 
-// Comprobación de préstamo vencido
+// Comprobación de préstamo vencido inmune a desfases de zona horaria
 function esPrestamoVencido(fechaLimiteStr) {
     if (!fechaLimiteStr) return { vencido: false, dias: 0 };
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    const limite = new Date(fechaLimiteStr);
+    let limite;
+    const match = String(fechaLimiteStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+        limite = new Date(parseInt(match[1], 10), parseInt(match[2], 10) - 1, parseInt(match[3], 10));
+    } else {
+        limite = new Date(fechaLimiteStr);
+    }
     limite.setHours(0, 0, 0, 0);
 
     const diffMs = hoy.getTime() - limite.getTime();
@@ -236,10 +259,12 @@ async function loadEstado() {
         }
     });
 
-    // Renderizar tarjetas de microservicios
-    $('#svc').innerHTML = resultados.map(s => `
+    // Renderizar tarjetas de microservicios sin latencia, conexion ni cola (Requerimiento 11)
+    const svcEl = $('#svc');
+    if (svcEl) {
+        svcEl.innerHTML = resultados.map(s => `
     <div class="service-card ${s.ok ? 'is-up' : 'is-down'}">
-      <div class="service-card-header">
+      <div class="service-card-header" style="border-bottom:none; margin-bottom:0; padding-bottom:0;">
         <div class="service-title-wrap">
           <div class="service-icon-box">
             <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -251,7 +276,6 @@ async function loadEstado() {
           </div>
           <div>
             <h3 class="service-name">Servicio de ${esc(s.name)}</h3>
-            <span class="service-endpoint">:${s.port} · ${esc(s.url)}/health</span>
           </div>
         </div>
         <span class="service-status-pill ${s.ok ? 'up' : 'down'}">
@@ -259,26 +283,9 @@ async function loadEstado() {
           ${s.ok ? 'EN LÍNEA' : 'FUERA DE SERVICIO'}
         </span>
       </div>
-      <div class="service-card-body">
-        <div class="service-meta-row">
-          <span class="service-meta-label">Latencia de respuesta:</span>
-          <span class="service-meta-val">${s.latency !== null ? `${s.latency} ms` : 'Sin respuesta'}</span>
-        </div>
-        <div class="service-meta-row">
-          <span class="service-meta-label">Estado de conexión:</span>
-          <span class="service-meta-val">${s.ok ? 'Operativo y saludable' : 'Contenedor inaccesible'}</span>
-        </div>
-        ${s.data && s.data.pendientes !== undefined ? `
-          <div class="service-meta-row">
-            <span class="service-meta-label">Cola de correos:</span>
-            <span class="service-meta-val" style="color: ${s.data.pendientes > 0 ? 'var(--warning-tx)' : 'var(--success-tx)'}; font-weight:700;">
-              ${s.data.pendientes} pendiente(s)
-            </span>
-          </div>
-        ` : ''}
-      </div>
     </div>
   `).join('');
+    }
 
     // Cargar métricas reales en segundo plano sin bloquear
     cargarMetricasDashboard(resultados);
@@ -361,16 +368,10 @@ async function cargarMetricasDashboard(serviciosSalud) {
             $('#stat-total-notifs').textContent = notifs.length;
             $('#stat-notifs-sub').textContent = `${enviadas} enviadas · ${pendientes} en cola · ${fallidas} fallidas`;
 
-            // Badge en el sidebar si hay pendientes o fallidas
+            // Badge en el sidebar desactivado por peticion del usuario (Requerimiento 1)
             const badge = $('#sidebar-notif-badge');
             if (badge) {
-                const atencion = pendientes + fallidas;
-                if (atencion > 0) {
-                    badge.textContent = atencion;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
+                badge.style.display = 'none';
             }
         } catch {
             $('#stat-total-notifs').textContent = '—';
@@ -524,13 +525,14 @@ async function loadCatalogo() {
         ]);
 
         if (alertBanner) alertBanner.style.display = 'none';
+        cache.autores = autores || [];
         cache.libros = libros || [];
         cache.autoresMap = Object.fromEntries((autores || []).map(a => [a.id, a.nombre]));
 
-        // Actualizar selector de autores en el formulario de nuevo libro
+        // Actualizar selector de autores en el formulario de nuevo libro (Obligatorio)
         const selAutor = $('#sel-autor');
         if (selAutor) {
-            selAutor.innerHTML = '<option value="">(Opcional) Sin autor asignado</option>' +
+            selAutor.innerHTML = '<option value="">-- Selecciona un autor (Obligatorio) --</option>' +
                 (autores || []).map(a => `<option value="${a.id}">${esc(a.nombre)}${a.nacionalidad ? ` (${esc(a.nacionalidad)})` : ''}</option>`).join('');
         }
 
@@ -578,15 +580,19 @@ function renderTablaLibros() {
 
     let list = cache.libros.filter(libro => {
         const autorNombre = cache.autoresMap[libro.autor_id] || '';
+        const generoStr = String(libro.genero || '');
         const matchSearch = !searchVal ||
             String(libro.titulo || '').toLowerCase().includes(searchVal) ||
             autorNombre.toLowerCase().includes(searchVal) ||
+            generoStr.toLowerCase().includes(searchVal) ||
             String(libro.id).includes(searchVal);
 
         if (!matchSearch) return false;
 
-        if (dispFilter === 'available') return libro.ejemplares_disponibles > 0;
-        if (dispFilter === 'out') return libro.ejemplares_disponibles <= 0;
+        const isInactive = libro.estado === 'INACTIVO';
+        if (dispFilter === 'available') return !isInactive && Number(libro.ejemplares_disponibles) > 0;
+        if (dispFilter === 'out') return !isInactive && Number(libro.ejemplares_disponibles) <= 0;
+        if (dispFilter === 'inactive') return isInactive;
         return true;
     });
 
@@ -612,8 +618,18 @@ function renderTablaLibros() {
 
     const rows = list.map(x => {
         const autor = cache.autoresMap[x.autor_id] || '—';
-        const isDisponible = x.estado === 'DISPONIBLE' && x.ejemplares_disponibles > 0;
+        const isInactive = x.estado === 'INACTIVO';
+        const isDisponible = !isInactive && x.estado === 'DISPONIBLE' && Number(x.ejemplares_disponibles) > 0;
         const ratio = x.ejemplares_totales > 0 ? Math.round((x.ejemplares_disponibles / x.ejemplares_totales) * 100) : 0;
+
+        let badgeEstado;
+        if (isInactive) {
+            badgeEstado = bd('INACTIVO', 'er');
+        } else if (isDisponible) {
+            badgeEstado = bd('DISPONIBLE', 'ok');
+        } else {
+            badgeEstado = bd('AGOTADO', 'wa');
+        }
 
         return `
       <tr>
@@ -624,10 +640,12 @@ function renderTablaLibros() {
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
             </svg>
-            <span>${esc(x.titulo)}</span>
+            <strong>${esc(x.titulo)}</strong>
           </div>
         </td>
         <td>${esc(autor)}</td>
+        <td><span class="badge badge-info" style="font-size:0.75rem;">${esc(x.genero || 'General')}</span></td>
+        <td><span style="font-size:0.8rem; color:var(--tx-secondary);">${esc(x.edicion || '—')}</span></td>
         <td>
           <div class="stock-pill">
             <span>${x.ejemplares_disponibles} / ${x.ejemplares_totales}</span>
@@ -636,7 +654,7 @@ function renderTablaLibros() {
             </div>
           </div>
         </td>
-        <td>${bd(x.estado, isDisponible ? 'ok' : 'er')}</td>
+        <td>${badgeEstado}</td>
         <td>
           <div class="td-actions">
             <button class="action-btn" data-act="edit-libro" data-id="${x.id}" data-t="${esc(x.titulo)}" data-n="${x.ejemplares_totales}" data-disp="${x.ejemplares_disponibles}">
@@ -646,12 +664,24 @@ function renderTablaLibros() {
               </svg>
               <span>Editar</span>
             </button>
-            <button class="action-btn btn-action-danger" data-act="del-libro" data-id="${x.id}" data-t="${esc(x.titulo)}">
-              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-              </svg>
-              <span>Eliminar</span>
-            </button>
+            ${isInactive ? `
+              <button class="action-btn btn-action-success" data-act="reincorporar-libro" data-id="${x.id}" data-t="${esc(x.titulo)}" title="Reactivar libro en catálogo">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                  <path d="M21 3v5h-5"/>
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                  <path d="M8 16H3v5"/>
+                </svg>
+                <span>Reincorporar</span>
+              </button>
+            ` : `
+              <button class="action-btn btn-action-danger" data-act="del-libro" data-id="${x.id}" data-t="${esc(x.titulo)}" title="Dar de baja / inactivar libro">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                </svg>
+                <span>Dar de baja</span>
+              </button>
+            `}
           </div>
         </td>
       </tr>
@@ -665,6 +695,8 @@ function renderTablaLibros() {
           <th>ID</th>
           <th>Título</th>
           <th>Autor</th>
+          <th>Género</th>
+          <th>Edición</th>
           <th>Ejemplares</th>
           <th>Estado</th>
           <th style="text-align:right;">Acciones</th>
@@ -694,11 +726,15 @@ function renderTablaUsuarios() {
         const matchSearch = !searchVal ||
             String(u.nombre || '').toLowerCase().includes(searchVal) ||
             String(u.codigo || '').toLowerCase().includes(searchVal) ||
+            String(u.ci || '').toLowerCase().includes(searchVal) ||
             String(u.correo || '').toLowerCase().includes(searchVal);
 
         if (!matchSearch) return false;
 
-        if (tipoFilter !== 'all' && u.tipo !== tipoFilter) return false;
+        const isActivo = +u.activo === 1;
+        if (tipoFilter === 'ESTUDIANTE') return u.tipo === 'ESTUDIANTE';
+        if (tipoFilter === 'DOCENTE') return u.tipo === 'DOCENTE';
+        if (tipoFilter === 'inactivos') return !isActivo;
         return true;
     });
 
@@ -726,15 +762,33 @@ function renderTablaUsuarios() {
         const isActivo = +x.activo === 1;
         const tipoClass = x.tipo === 'DOCENTE' ? 'tipo-docente' : 'tipo-estudiante';
 
+        // Detectar motivo específico de inactividad
+        const motivo = (x.bloqueado_motivo || '').toUpperCase();
+        let badgeEstado;
+        if (isActivo) {
+            badgeEstado = bd('ACTIVO', 'ok');
+        } else if (motivo === 'INCUMPLIMIENTO') {
+            badgeEstado = '<span class="badge badge-er" style="font-weight:600;" title="Bloqueado por superar los 7 días extras sin devolver la obra">BLOQUEADO (INCUMPLIMIENTO)</span>';
+        } else if (motivo === 'REINCIDENCIA') {
+            badgeEstado = '<span class="badge badge-er" style="font-weight:600; background:#7f1d1d; color:#ffffff;" title="Bloqueado por acumular 3 devoluciones tardías">BLOQUEADO (REINCIDENCIA)</span>';
+        } else if (motivo === 'MORA') {
+            badgeEstado = '<span class="badge badge-er" title="Inhabilitado automáticamente por entrega de libro fuera de plazo">INACTIVO (MORA)</span>';
+        } else {
+            badgeEstado = bd('INACTIVO', 'er');
+        }
+
         return `
       <tr>
-        <td class="td-code">${esc(x.codigo)}</td>
+        <td class="td-code">${esc(x.codigo || x.ci)}</td>
         <td>
           <div class="td-title-cell">
             <div class="user-avatar" style="width:28px; height:28px; font-size:0.68rem; background: ${x.tipo === 'DOCENTE' ? '#4f46e5' : '#2563eb'};">
               ${esc((x.nombre || 'U').slice(0, 2).toUpperCase())}
             </div>
-            <strong>${esc(x.nombre)}</strong>
+            <div>
+              <strong>${esc(x.nombre)}</strong>
+              ${x.ci && x.ci !== x.codigo ? `<div style="font-size:0.75rem; color:var(--tx-muted);">CI: ${esc(x.ci)}</div>` : ''}
+            </div>
           </div>
         </td>
         <td>
@@ -743,18 +797,35 @@ function renderTablaUsuarios() {
           </span>
         </td>
         <td><span class="user-tipo-label ${tipoClass}">${esc(x.tipo)}</span></td>
-        <td>${bd(isActivo ? 'ACTIVO' : 'INACTIVO', isActivo ? 'ok' : 'er')}</td>
+        <td>${badgeEstado}</td>
         <td>
           <div class="td-actions">
+            <button class="action-btn" data-act="edit-user" data-id="${x.id}" title="Editar usuario">
+              <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                <path d="m15 5 4 4"/>
+              </svg>
+              <span>Editar</span>
+            </button>
             ${isActivo ? `
-              <button class="action-btn btn-action-danger" data-act="baja" data-id="${x.id}" data-nom="${esc(x.nombre)}">
+              <button class="action-btn btn-action-danger" data-act="baja" data-id="${x.id}" data-nom="${esc(x.nombre)}" title="Dar de baja usuario">
                 <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                   <line x1="18" x2="23" y1="11" y2="11"/>
                 </svg>
                 <span>Dar de baja</span>
               </button>
-            ` : '<span class="mu" style="font-size:0.75rem;">Inactivo</span>'}
+            ` : `
+              <button class="action-btn btn-action-success" data-act="reincorporar-user" data-id="${x.id}" data-nom="${esc(x.nombre)}" title="Reincorporar usuario">
+                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <line x1="19" x2="19" y1="8" y2="14"/>
+                  <line x1="22" x2="16" y1="11" y2="11"/>
+                </svg>
+                <span>Reincorporar</span>
+              </button>
+            `}
           </div>
         </td>
       </tr>
@@ -765,9 +836,9 @@ function renderTablaUsuarios() {
     <table>
       <thead>
         <tr>
-          <th>Código</th>
+          <th>C.I. / Código</th>
           <th>Nombre del usuario</th>
-          <th>Correo institucional</th>
+          <th>Correo</th>
           <th>Tipo</th>
           <th>Estado</th>
           <th style="text-align:right;">Acciones</th>
@@ -844,8 +915,17 @@ async function loadPrestamos() {
 
 function renderTablaPrestamos() {
     const searchVal = ($('#filter-prest-search')?.value || '').toLowerCase().trim();
+    const estVal = $('#f-est')?.value || '';
 
     let list = cache.prestamos.filter(p => {
+        const isActivo = p.estado === 'ACTIVO';
+        if (estVal === 'RETRASO') {
+            const overdue = isActivo ? esPrestamoVencido(p.fecha_limite) : { vencido: false };
+            if (!overdue.vencido) return false;
+        } else if (estVal) {
+            if (p.estado !== estVal) return false;
+        }
+
         if (!searchVal) return true;
         return String(p.usuario || '').toLowerCase().includes(searchVal) ||
             String(p.libro_titulo || p.libro_id || '').toLowerCase().includes(searchVal) ||
@@ -905,6 +985,11 @@ function renderTablaPrestamos() {
           </span>
         </td>
         <td>
+          <span style="font-family:var(--font-mono); font-size:0.82rem; color:var(--tx-secondary);">
+            ${formatearFecha(x.fecha_prestamo)}
+          </span>
+        </td>
+        <td>
           <span class="plazo-pill" title="Duración acordada: ${diasNum} días">
             <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -942,6 +1027,7 @@ function renderTablaPrestamos() {
           <th>ID</th>
           <th>Usuario solicitante</th>
           <th>Libro en préstamo</th>
+          <th>Fecha préstamo</th>
           <th>Plazo</th>
           <th>Fecha límite</th>
           <th>Estado</th>
@@ -959,10 +1045,8 @@ function renderTablaPrestamos() {
 
 async function loadNotifs() {
     const query = new URLSearchParams();
-    const nEst = $('#n-est')?.value;
     const nTipo = $('#n-tipo')?.value;
 
-    if (nEst) query.set('estado', nEst);
     if (nTipo) query.set('tipo', nTipo);
 
     const alertBanner = $('#notif-down-alert');
@@ -992,11 +1076,26 @@ async function loadNotifs() {
 
 function renderTablaNotificaciones() {
     const searchVal = ($('#filter-notif-search')?.value || '').toLowerCase().trim();
+    const tipoVal = $('#n-tipo')?.value || '';
 
     let list = cache.notificaciones.filter(n => {
+        if (tipoVal) {
+            const t = (n.tipo || '').toUpperCase();
+            if (tipoVal === 'PRESTAMO_REGISTRADO' && t !== 'PRESTAMO_REGISTRADO' && t !== 'PRESTAMO') return false;
+            if (tipoVal === 'RECORDATORIO' && t !== 'RECORDATORIO' && t !== 'POR_VENCER') return false;
+            if (tipoVal === 'VENCIMIENTO' && t !== 'VENCIMIENTO') return false;
+            if (tipoVal === 'BLOQUEO_POR_INCUMPLIMIENTO' && t !== 'BLOQUEO_POR_INCUMPLIMIENTO') return false;
+            if (tipoVal === 'DEVOLUCION_CONFIRMADA' && t !== 'DEVOLUCION_CONFIRMADA') return false;
+            if (tipoVal === 'DEVOLUCION_TARDIA_1' && t !== 'DEVOLUCION_TARDIA_1') return false;
+            if (tipoVal === 'DEVOLUCION_TARDIA_2' && t !== 'DEVOLUCION_TARDIA_2') return false;
+            if (tipoVal === 'BLOQUEO_POR_REINCIDENCIA' && t !== 'BLOQUEO_POR_REINCIDENCIA') return false;
+            if (tipoVal === 'DEVOLUCION_CRITICA' && t !== 'DEVOLUCION_CRITICA' && t !== 'MULTA') return false;
+        }
+
         if (!searchVal) return true;
         return String(n.usuario || '').toLowerCase().includes(searchVal) ||
             String(n.correo_destino || '').toLowerCase().includes(searchVal) ||
+            String(n.tipo || '').toLowerCase().includes(searchVal) ||
             String(n.id).includes(searchVal);
     });
 
@@ -1014,23 +1113,67 @@ function renderTablaNotificaciones() {
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
         </svg>
         <h4 class="empty-state-title">No hay notificaciones registradas</h4>
-        <p class="empty-state-desc">Las notificaciones por correo de préstamos, avisos de vencimiento y multas aparecerán aquí automáticamente.</p>
+        <p class="empty-state-desc">Los correos de préstamos registrados, recordatorios (1 día antes), vencimientos y devoluciones confirmadas aparecerán aquí automáticamente.</p>
       </div>
     `;
         return;
     }
 
-    const estadoClases = { ENVIADA: 'ok', PENDIENTE: 'wa', FALLIDA: 'er' };
-
     const rows = list.map(x => {
-        let tipoBadge = `<span class="badge badge-info">${esc(x.tipo)}</span>`;
-        if (x.tipo === 'POR_VENCER') tipoBadge = `<span class="badge badge-wa">${esc(x.tipo)}</span>`;
-        if (x.tipo === 'MULTA') tipoBadge = `<span class="badge badge-er">${esc(x.tipo)}</span>`;
+        const t = (x.tipo || '').toUpperCase();
+        let tipoBadge;
+        if (t === 'PRESTAMO_REGISTRADO' || t === 'PRESTAMO') {
+            tipoBadge = `<span class="badge badge-info" style="font-weight:600;">PRESTAMO_REGISTRADO</span>`;
+        } else if (t === 'RECORDATORIO' || t === 'POR_VENCER') {
+            tipoBadge = `<span class="badge badge-wa" style="font-weight:600;">RECORDATORIO (1 día antes)</span>`;
+        } else if (t === 'VENCIMIENTO') {
+            tipoBadge = `<span class="badge" style="font-weight:600; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa;">VENCIMIENTO (7 días extras)</span>`;
+        } else if (t === 'BLOQUEO_POR_INCUMPLIMIENTO') {
+            tipoBadge = `<span class="badge badge-er" style="font-weight:600; background:#fef2f2; color:#dc2626; border:1px solid #fecaca;">BLOQUEO_POR_INCUMPLIMIENTO</span>`;
+        } else if (t === 'DEVOLUCION_CONFIRMADA') {
+            tipoBadge = `<span class="badge badge-ok" style="font-weight:600;">DEVOLUCION_CONFIRMADA (A tiempo)</span>`;
+        } else if (t === 'DEVOLUCION_TARDIA_1') {
+            tipoBadge = `<span class="badge" style="font-weight:600; background:#fefce8; color:#854d0e; border:1px solid #fef08a;">DEVOLUCION_TARDIA_1 (1ª advertencia)</span>`;
+        } else if (t === 'DEVOLUCION_TARDIA_2') {
+            tipoBadge = `<span class="badge" style="font-weight:600; background:#fff7ed; color:#c2410c; border:1px solid #ffedd5;">DEVOLUCION_TARDIA_2 (Última advertencia)</span>`;
+        } else if (t === 'BLOQUEO_POR_REINCIDENCIA') {
+            tipoBadge = `<span class="badge badge-er" style="font-weight:600; background:#7f1d1d; color:#ffffff; border:1px solid #991b1b;">BLOQUEO_POR_REINCIDENCIA</span>`;
+        } else if (t === 'DEVOLUCION_CRITICA' || t === 'MULTA') {
+            tipoBadge = `<span class="badge" style="font-weight:600; background:#fdf4ff; color:#86198f; border:1px solid #f5d0fe;">DEVOLUCION_CRITICA</span>`;
+        } else {
+            tipoBadge = `<span class="badge badge-info">${esc(x.tipo)}</span>`;
+        }
 
-        const rawError = x.ultimo_error || '';
-        const errorHtml = rawError
-            ? `<span class="error-cell error-cell-click" data-err="${esc(rawError)}" title="Clic para ver detalle">${esc(rawError)}</span>`
-            : '<span class="mu">—</span>';
+        let extra = {};
+        try {
+            extra = typeof x.datos === 'string' ? JSON.parse(x.datos) : (x.datos || {});
+        } catch (e) {
+            extra = {};
+        }
+
+        // Control de Fecha de Préstamo
+        const fPrestamoRaw = extra.fecha_prestamo || (t === 'PRESTAMO' || t === 'PRESTAMO_REGISTRADO' ? x.fecha_creacion : (x.fecha_creacion || ''));
+        const fechaPrestamo = fPrestamoRaw ? formatearFecha(fPrestamoRaw) : '—';
+
+        // Control de Fecha Límite
+        const fechaLimite = extra.fecha_limite ? formatearFecha(extra.fecha_limite) : '—';
+
+        // Control de Fecha de Devolución
+        let fechaDevolucion = '—';
+        if (extra.fecha_devolucion) {
+            const fDevFormatted = formatearFecha(extra.fecha_devolucion);
+            const conRetraso = extra.con_retraso || (extra.monto && parseFloat(extra.monto) > 0) || (extra.dias_retraso && parseInt(extra.dias_retraso) > 0);
+            if (conRetraso) {
+                const montoStr = extra.monto !== undefined ? parseFloat(extra.monto).toFixed(2) : ((Number(extra.dias_retraso) || 1) * 2.5).toFixed(2);
+                fechaDevolucion = `<strong style="color:var(--success-tx, #15803d);">${fDevFormatted}</strong> <span style="font-size:0.75rem; color:var(--danger); font-weight:600;">(Multa: Bs. ${montoStr})</span>`;
+            } else {
+                fechaDevolucion = `<strong style="color:var(--success-tx, #15803d);">${fDevFormatted}</strong>`;
+            }
+        } else if (t === 'DEVOLUCION_CONFIRMADA' || t === 'MULTA') {
+            fechaDevolucion = '<strong style="color:var(--success-tx, #15803d);">Devuelto</strong>';
+        } else {
+            fechaDevolucion = '<span class="mu" style="font-size:0.75rem;">En curso / No devuelto</span>';
+        }
 
         return `
       <tr>
@@ -1042,24 +1185,9 @@ function renderTablaNotificaciones() {
             ${esc(x.correo_destino || '—')}
           </span>
         </td>
-        <td>${bd(x.estado, estadoClases[x.estado])}</td>
-        <td style="font-family:var(--font-mono); font-size:0.8rem; text-align:center;">${x.intentos}</td>
-        <td>${errorHtml}</td>
-        <td>
-          <div class="td-actions">
-            ${x.estado === 'FALLIDA' && x.correo_destino ? `
-              <button class="action-btn btn-action-primary" data-act="reintentar" data-id="${x.id}">
-                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                  <path d="M3 3v5h5"/>
-                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-                  <path d="M16 16h5v5"/>
-                </svg>
-                <span>Reintentar</span>
-              </button>
-            ` : ''}
-          </div>
-        </td>
+        <td><span style="font-weight:600; color:var(--tx-main);">${fechaPrestamo}</span></td>
+        <td><span style="font-weight:600; color:var(--primary);">${fechaLimite}</span></td>
+        <td>${fechaDevolucion}</td>
       </tr>
     `;
     });
@@ -1069,13 +1197,12 @@ function renderTablaNotificaciones() {
       <thead>
         <tr>
           <th>ID</th>
-          <th>Tipo</th>
-          <th>Destinatario</th>
-          <th>Correo electrónico</th>
-          <th>Estado</th>
-          <th style="text-align:center;">Intentos</th>
-          <th>Último error</th>
-          <th style="text-align:right;">Acciones</th>
+          <th>Tipo de Notificación</th>
+          <th>Usuario</th>
+          <th>Correo destino</th>
+          <th>Fecha Préstamo</th>
+          <th>Fecha Límite</th>
+          <th>Fecha Devolución</th>
         </tr>
       </thead>
       <tbody>${rows.join('')}</tbody>
@@ -1240,31 +1367,106 @@ function setupForm(formId, submitBtnId, submitFn, successMsg) {
     };
 }
 
-// 1. Guardar Autor
+// 1. Guardar Autor (Control de no repetir autores y validaciones)
 setupForm('#f-autor', '#btn-save-autor', async d => {
-    await api(API.cat + '/autores', 'POST', d);
-    await loadCatalogo();
+    const nom = (d.nombre || '').trim();
+    const nac = (d.nacionalidad || '').trim();
+    if (!nom) throw new Error('El nombre del autor es obligatorio.');
+    if (!/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\.\-]+$/.test(nom)) {
+        throw new Error('El nombre del autor solo debe contener letras, puntos y espacios.');
+    }
+    if (!nac) throw new Error('La nacionalidad del autor es obligatoria.');
+    if (!/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\(\)\.\-]+$/.test(nac)) {
+        throw new Error('El país de origen solo debe contener letras y caracteres válidos.');
+    }
+    const normStr = str => (str || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+    const paisOficialCrear = PAISES.find(p => normStr(p) === normStr(nac));
+    if (!paisOficialCrear) {
+        throw new Error(`El país "${nac}" no es válido. Debes seleccionar uno de los países que aparecen en las sugerencias al escribir.`);
+    }
+    d.nacionalidad = paisOficialCrear;
+
+    // Validación preventiva en cliente para autor duplicado
+    const existente = (cache.autores || []).find(a => a.nombre.trim().toLowerCase() === nom.toLowerCase());
+    if (existente) {
+        throw new Error(`⚠️ Ya existe un autor registrado con el nombre "${existente.nombre}". No se permiten autores duplicados.`);
+    }
+
+    try {
+        await api(API.cat + '/autores', 'POST', d);
+        await loadCatalogo();
+        const hint = $('#hint-autor-duplicado');
+        if (hint) hint.style.display = 'none';
+    } catch (err) {
+        if (err.status === 409) {
+            throw new Error(`⚠️ Autor duplicado: ${err.message || 'Ya existe un autor con ese nombre.'}`);
+        }
+        throw err;
+    }
 }, 'Autor guardado exitosamente');
 
-// 2. Guardar Libro (con detección y suma inteligente de ejemplares para evitar duplicados)
+// 2. Guardar Libro (Requerimientos 5, 6, 7)
 setupForm('#f-libro', '#btn-save-libro', async d => {
+    const tit = (d.titulo || '').trim();
+    if (!tit) throw new Error('El título del libro es obligatorio.');
+    if (!d.autor_id) {
+        throw new Error('Debe seleccionar obligatoriamente un autor para la obra.');
+    }
+    if (!d.genero) {
+        throw new Error('Debe seleccionar obligatoriamente un género para la obra.');
+    }
     const payload = {
-        titulo: (d.titulo || '').trim(),
+        titulo: tit,
+        autor_id: +d.autor_id,
+        genero: d.genero,
+        edicion: (d.edicion || '').trim(),
         ejemplares_totales: +d.ejemplares_totales || 1,
         sumar_si_existe: true
     };
-    if (d.autor_id) payload.autor_id = +d.autor_id;
-    const res = await api(API.cat + '/libros', 'POST', payload);
-    await loadCatalogo();
-    if (res && res.ejemplares_totales > (+d.ejemplares_totales || 1)) {
-        toast(`La obra ya existía; se sumaron ${+d.ejemplares_totales || 1} unidades a su inventario (total: ${res.ejemplares_totales}).`);
+    try {
+        const res = await api(API.cat + '/libros', 'POST', payload);
+        await loadCatalogo();
+        if (res && res.ejemplares_totales > (+d.ejemplares_totales || 1)) {
+            toast(`La obra ya existía; se sumaron ${+d.ejemplares_totales || 1} unidades a su inventario (total: ${res.ejemplares_totales}).`);
+        }
+    } catch (err) {
+        if (err.status === 409) {
+            throw new Error(`⚠️ Conflicto: ${err.message}`);
+        }
+        throw err;
     }
 }, 'Libro incorporado al catálogo exitosamente');
 
-// 3. Registrar Usuario
+// 3. Registrar Usuario (Requerimientos 4 y 10)
 setupForm('#f-user', '#btn-save-user', async d => {
-    await api(API.pre + '/usuarios', 'POST', d);
-    await loadUsuarios();
+    const cod = (d.codigo || '').trim();
+    const nom = (d.nombre || '').trim();
+    const mail = (d.correo || '').trim();
+    if (!cod || !/^\d+$/.test(cod)) {
+        throw new Error('El Carnet de Identidad (CI) solo debe contener dígitos numéricos.');
+    }
+    if (!nom || !/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s]+$/.test(nom)) {
+        throw new Error('El nombre completo solo debe contener letras y espacios.');
+    }
+    if (!mail) {
+        throw new Error('El correo es obligatorio.');
+    }
+    const payload = {
+        codigo: cod,
+        ci: cod,
+        nombre: nom,
+        correo: mail,
+        tipo: d.tipo || 'ESTUDIANTE'
+    };
+    try {
+        await api(API.pre + '/usuarios', 'POST', payload);
+        await loadUsuarios();
+    } catch (err) {
+        if (err.status === 409) {
+            throw new Error('⚠️ Carnet duplicado: Ya existe un usuario registrado con el CI proporcionado.');
+        }
+        throw err;
+    }
 }, 'Usuario universitario registrado exitosamente');
 
 // 4. Prestar Libro
@@ -1374,7 +1576,6 @@ if ($('#f-est')) {
 
 // Filtros y búsquedas de Notificaciones
 $('#filter-notif-search')?.addEventListener('input', renderTablaNotificaciones);
-if ($('#n-est')) $('#n-est').onchange = () => run(loadNotifs);
 if ($('#n-tipo')) $('#n-tipo').onchange = () => run(loadNotifs);
 
 // Botón de revisión de vencimientos
@@ -1394,6 +1595,7 @@ $('#btn-rev')?.addEventListener('click', () => {
             <li><strong>Préstamos revisados (≤ 2 días restantes):</strong> ${res.revisados}</li>
             <li><strong>Avisos de vencimiento enviados:</strong> ${res.avisados}</li>
             <li><strong>Multas pendientes reenviadas:</strong> ${res.multas_reenviadas}</li>
+            <li><strong>Usuarios inhabilitados automáticamente por mora:</strong> ${res.deshabilitados_mora ?? 0}</li>
             ${res.sin_correo ? `<li><strong>Usuarios sin correo registrado:</strong> ${res.sin_correo}</li>` : ''}
           </ul>
           ${isNotifDown ? `
@@ -1450,20 +1652,61 @@ document.addEventListener('click', e => {
     const { act, id } = b.dataset;
 
     run(async () => {
-        // 1. Eliminar libro
+        // 1. Inactivar / Dar de baja libro (Requerimiento 7 y 14)
         if (act === 'del-libro') {
             const titulo = b.dataset.t || `Libro #${id}`;
             showModal({
-                title: 'Confirmar Eliminación de Libro',
+                title: 'Confirmar Inactivación de Libro',
                 bodyHtml: `
-          <p>¿Estás seguro de que deseas eliminar permanentemente la obra <strong>"${esc(titulo)}"</strong>?</p>
-          <p class="mu">Nota: No se puede eliminar si existen ejemplares prestados actualmente.</p>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <p>¿Estás seguro de que deseas dar de baja o inactivar la obra <strong>"${esc(titulo)}"</strong>?</p>
+            <div style="background:var(--card-bg-sec, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:6px; padding:10px; font-size:0.85rem; color:var(--tx-secondary);">
+              ℹ️ El libro pasará a estado <strong>INACTIVO</strong>. Si existen préstamos en curso de esta obra, el sistema impedirá su baja hasta que sean devueltos.
+            </div>
+          </div>
         `,
-                confirmText: 'Eliminar libro',
+                confirmText: 'Inactivar libro',
                 confirmClass: 'btn-danger',
                 onConfirm: async () => {
-                    await api(`${API.pre}/libros/${id}`, 'DELETE');
-                    toast(`"${titulo}" eliminado correctamente`);
+                    try {
+                        await api(`${API.pre}/libros/${id}`, 'DELETE');
+                        toast(`"${titulo}" fue dado de baja correctamente.`);
+                        await loadCatalogo();
+                    } catch (err) {
+                        if (err.status === 409) {
+                            showModal({
+                                title: '⚠️ Acción Bloqueada: Préstamos Activos',
+                                bodyHtml: `
+                                  <div style="background:var(--danger-bg, #fef2f2); border:1px solid var(--danger-border, #fecaca); border-radius:8px; padding:1rem; color:var(--danger-tx, #991b1b);">
+                                    <p style="font-weight:700; margin-bottom:0.5rem;">No se puede dar de baja esta obra:</p>
+                                    <p>${esc(err.message)}</p>
+                                  </div>
+                                  <p style="margin-top:0.75rem; font-size:0.875rem; color:var(--tx-secondary);">
+                                    Debes registrar primero la devolución de todos los ejemplares prestados en la sección de <strong>Préstamos</strong>.
+                                  </p>
+                                `,
+                                confirmText: 'Entendido',
+                                cancelText: 'Cerrar'
+                            });
+                        } else {
+                            toast(`Error al inactivar: ${err.message}`, true);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 1.1 Reincorporar libro (Requerimiento 7)
+        if (act === 'reincorporar-libro') {
+            const titulo = b.dataset.t || `Libro #${id}`;
+            showModal({
+                title: 'Reincorporar Obra al Catálogo',
+                bodyHtml: `<p>¿Deseas reactivar y poner nuevamente en circulación el libro <strong>"${esc(titulo)}"</strong>?</p>`,
+                confirmText: 'Reincorporar',
+                confirmClass: 'btn-primary',
+                onConfirm: async () => {
+                    await api(`${API.pre}/libros/${id}/reincorporar`, 'POST');
+                    toast(`"${titulo}" ha sido reincorporado exitosamente al catálogo.`);
                     await loadCatalogo();
                 }
             });
@@ -1521,20 +1764,130 @@ document.addEventListener('click', e => {
             });
         }
 
-        // 3. Dar de baja a un usuario
+        // 3. Editar usuario (Requerimientos 4 y 8)
+        if (act === 'edit-user') {
+            const user = cache.usuarios.find(u => u.id === +id);
+            if (!user) return;
+
+            showModal({
+                title: `Editar Usuario: ${user.nombre}`,
+                bodyHtml: `
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Nombre completo <span class="req">*</span></label>
+                <input id="modal-user-nom" class="form-control" value="${esc(user.nombre)}" required>
+              </div>
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label class="form-label">C.I. / Documento <span class="req">*</span></label>
+                  <input id="modal-user-ci" class="form-control" value="${esc(user.ci || user.codigo || '')}" required>
+                </div>
+                <div class="form-group flex-1">
+                  <label class="form-label">Tipo de usuario <span class="req">*</span></label>
+                  <select id="modal-user-tipo" class="form-control">
+                    <option value="ESTUDIANTE" ${user.tipo === 'ESTUDIANTE' ? 'selected' : ''}>ESTUDIANTE</option>
+                    <option value="DOCENTE" ${user.tipo === 'DOCENTE' ? 'selected' : ''}>DOCENTE</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Correo <span class="req">*</span></label>
+                <input id="modal-user-mail" type="email" class="form-control" value="${esc(user.correo || '')}" required>
+              </div>
+            </div>
+          `,
+                confirmText: 'Guardar cambios',
+                confirmClass: 'btn-primary',
+                onConfirm: async () => {
+                    const nom = $('#modal-user-nom')?.value?.trim();
+                    const ci = $('#modal-user-ci')?.value?.trim();
+                    const mail = $('#modal-user-mail')?.value?.trim();
+                    const tipo = $('#modal-user-tipo')?.value;
+
+                    if (!nom) { toast('El nombre no puede estar vacío.', true); return false; }
+                    if (!/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s]+$/.test(nom)) { toast('El nombre solo debe contener letras y espacios.', true); return false; }
+                    if (!ci || !/^\d+$/.test(ci)) { toast('El CI solo debe contener dígitos numéricos.', true); return false; }
+                    if (!mail) { toast('El correo es obligatorio.', true); return false; }
+
+                    try {
+                        await api(`${API.pre}/usuarios/${id}`, 'PUT', {
+                            nombre: nom,
+                            ci: ci,
+                            codigo: ci,
+                            correo: mail,
+                            tipo: tipo,
+                            activo: user.activo
+                        });
+                        toast('Usuario actualizado exitosamente.');
+                        await loadUsuarios();
+                    } catch (err) {
+                        toast(`Error al actualizar usuario: ${err.message}`, true);
+                        return false;
+                    }
+                }
+            });
+
+            setTimeout(() => {
+                $('#modal-user-ci')?.addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); });
+                $('#modal-user-nom')?.addEventListener('input', e => { e.target.value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\(\)\.\-]/g, ''); });
+            }, 100);
+        }
+
+        // 3.1 Dar de baja a un usuario (Requerimientos 3 y 14)
         if (act === 'baja') {
             const nombre = b.dataset.nom || `Usuario #${id}`;
             showModal({
-                title: 'Dar de Baja a Usuario',
+                title: 'Confirmar Baja de Usuario',
                 bodyHtml: `
-          <p>¿Confirmas dar de baja a <strong>"${esc(nombre)}"</strong>?</p>
-          <p class="mu">El usuario quedará inactivo y no podrá solicitar nuevos préstamos.</p>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <p>¿Confirmas dar de baja a <strong>"${esc(nombre)}"</strong>?</p>
+            <div style="background:var(--card-bg-sec, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:6px; padding:10px; font-size:0.85rem; color:var(--tx-secondary);">
+              ℹ️ El usuario quedará <strong>INACTIVO</strong> y no podrá solicitar nuevos préstamos. Si tiene préstamos pendientes, la baja será rechazada.
+            </div>
+          </div>
         `,
                 confirmText: 'Dar de baja',
                 confirmClass: 'btn-danger',
                 onConfirm: async () => {
-                    await api(`${API.pre}/usuarios/${id}`, 'DELETE');
-                    toast(`Usuario "${nombre}" dado de baja`);
+                    try {
+                        await api(`${API.pre}/usuarios/${id}`, 'DELETE');
+                        toast(`Usuario "${nombre}" dado de baja correctamente.`);
+                        await loadUsuarios();
+                    } catch (err) {
+                        if (err.status === 409) {
+                            showModal({
+                                title: '⚠️ Acción Bloqueada: Préstamos Activos',
+                                bodyHtml: `
+                                  <div style="background:var(--danger-bg, #fef2f2); border:1px solid var(--danger-border, #fecaca); border-radius:8px; padding:1rem; color:var(--danger-tx, #991b1b);">
+                                    <p style="font-weight:700; margin-bottom:0.5rem;">No se puede dar de baja a este usuario:</p>
+                                    <p>${esc(err.message)}</p>
+                                  </div>
+                                  <p style="margin-top:0.75rem; font-size:0.875rem; color:var(--tx-secondary);">
+                                    El usuario tiene libros en su poder. Debe registrar la devolución de todos sus préstamos activos antes de tramitar la baja.
+                                  </p>
+                                `,
+                                confirmText: 'Entendido',
+                                cancelText: 'Cerrar'
+                            });
+                        } else {
+                            toast(`Error al dar de baja: ${err.message}`, true);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3.2 Reincorporar usuario (Requerimiento 3)
+        if (act === 'reincorporar-user') {
+            const nombre = b.dataset.nom || `Usuario #${id}`;
+            showModal({
+                title: 'Reincorporar Usuario',
+                bodyHtml: `<p>¿Deseas reactivar al usuario <strong>"${esc(nombre)}"</strong> para que pueda volver a solicitar préstamos en la biblioteca?</p>`,
+                confirmText: 'Reincorporar',
+                confirmClass: 'btn-primary',
+                onConfirm: async () => {
+                    await api(`${API.pre}/usuarios/${id}/reincorporar`, 'POST');
+                    toast(`Usuario "${nombre}" reactivado con éxito en el sistema.`);
                     await loadUsuarios();
                 }
             });
@@ -1608,3 +1961,291 @@ setInterval(() => {
 
 // Inicializar la aplicación en la pestaña de Estado
 show('estado');
+
+
+// Restricción inmediata de caracteres en tiempo real (Requerimiento 4)
+$('#user-cod')?.addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+});
+$('#user-nom')?.addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\(\)\.\-]/g, '');
+});
+$('#autor-nombre')?.addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\.\-]/g, '');
+});
+$('#autor-nac')?.addEventListener('input', e => {
+    e.target.value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\(\)\.\-]/g, '');
+});
+
+// Navegación directa al hacer clic en las tarjetas informativas del panel principal (Requerimiento 11)
+document.addEventListener('click', e => {
+    const card = e.target.closest('.kpi-card[data-nav]');
+    if (card) {
+        const targetTab = card.dataset.nav;
+        if (targetTab && tabs[targetTab]) {
+            show(targetTab);
+        }
+    }
+});
+
+
+// =============================================================================
+// MODAL PARA GESTIONAR Y EDITAR AUTORES
+// =============================================================================
+function abrirModalGestionAutores() {
+    const autores = cache.autores || [];
+    if (!autores.length) {
+        toast('Aún no hay autores registrados para editar.', true);
+        return;
+    }
+
+    const modalBodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="form-group">
+          <label class="form-label" for="sel-editar-autor">Selecciona el autor que deseas editar <span class="req">*</span></label>
+          <select id="sel-editar-autor" class="form-control">
+            ${autores.map(a => `<option value="${a.id}">${esc(a.nombre)}${a.nacionalidad ? ` (${esc(a.nacionalidad)})` : ''}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="border-top:1px solid var(--border-color, #e2e8f0); padding-top:14px; display:flex; flex-direction:column; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" for="edit-autor-nombre">Nombre del autor <span class="req">*</span></label>
+            <input id="edit-autor-nombre" class="form-control" placeholder="Ej: Gabriel García Márquez" required>
+            <div id="hint-edit-autor-duplicado" style="display:none; font-size:12px; color:var(--danger, #dc2626); margin-top:4px; font-weight:500;"></div>
+          </div>
+          <div class="form-group" style="position:relative;">
+            <label class="form-label" for="edit-autor-nac">País de origen <span class="req">*</span></label>
+            <input id="edit-autor-nac" class="form-control" placeholder="Escribe para buscar país (ej. Bolivia)" autocomplete="off" required>
+            <div id="autocomplete-edit-paises" class="autocomplete-dropdown" style="display:none;"></div>
+            <div id="hint-edit-autor-nac" style="display:none; font-size:12px; color:var(--danger, #dc2626); margin-top:4px; font-weight:500;"></div>
+          </div>
+        </div>
+
+        <div style="background:var(--card-bg-sec, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:6px; padding:10px; font-size:0.83rem; color:var(--tx-secondary); line-height:1.4;">
+          <strong>Actualización sincronizada:</strong> Al guardar, todos los libros del catálogo que pertenezcan a este autor se actualizarán automáticamente.
+        </div>
+      </div>
+    `;
+
+    showModal({
+        title: 'Ver y Editar Autores',
+        bodyHtml: modalBodyHtml,
+        confirmText: 'Guardar cambios',
+        confirmClass: 'btn-primary',
+        onConfirm: async () => {
+            const sel = $('#sel-editar-autor');
+            const autorId = sel ? +sel.value : null;
+            if (!autorId) return false;
+
+            const nom = $('#edit-autor-nombre')?.value?.trim();
+            const nacInput = $('#edit-autor-nac')?.value?.trim();
+
+            if (!nom) {
+                toast('El nombre del autor no puede estar vacío.', true);
+                return false;
+            }
+            if (!/^[A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\.\-]+$/.test(nom)) {
+                toast('El nombre del autor solo debe contener letras, puntos y espacios.', true);
+                return false;
+            }
+
+            if (!nacInput) {
+                toast('El país de origen es obligatorio. Debes escoger un país de la lista.', true);
+                return false;
+            }
+
+            // Validar que el país seleccionado pertenezca estrictamente a la lista oficial
+            const normalize = str => (str || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+            const paisOficial = PAISES.find(p => normalize(p) === normalize(nacInput));
+            if (!paisOficial) {
+                toast(`El país "${nacInput}" no es válido. Debes seleccionar uno de los países que aparecen en las sugerencias al escribir.`, true);
+                const hint = $('#hint-edit-autor-nac');
+                if (hint) {
+                    hint.style.display = 'block';
+                    hint.textContent = 'Debes escoger un país válido de las sugerencias (ej: Bolivia, Colombia, etc.).';
+                }
+                return false;
+            }
+
+            // Validar que no choque con otro autor
+            const choque = (cache.autores || []).find(a => a.id !== autorId && a.nombre.trim().toLowerCase() === nom.toLowerCase());
+            if (choque) {
+                toast(`Ya existe otro autor registrado con el nombre "${nom}".`, true);
+                return false;
+            }
+
+            try {
+                await api(`${API.cat}/autores/${autorId}`, 'PUT', {
+                    nombre: nom,
+                    nacionalidad: paisOficial
+                });
+                toast('Autor actualizado correctamente. Todos los libros asociados han sido sincronizados.');
+                await loadCatalogo();
+                return true;
+            } catch (err) {
+                toast(`Error al actualizar autor: ${err.message}`, true);
+                return false;
+            }
+        }
+    });
+
+    const cargarDatosAutor = () => {
+        const sel = $('#sel-editar-autor');
+        if (!sel) return;
+        const currentId = +sel.value;
+        const autor = (cache.autores || []).find(a => a.id === currentId);
+        if (autor) {
+            const inpNom = $('#edit-autor-nombre');
+            const inpNac = $('#edit-autor-nac');
+            if (inpNom) inpNom.value = autor.nombre || '';
+            if (inpNac) inpNac.value = autor.nacionalidad || '';
+            const hintNac = $('#hint-edit-autor-nac');
+            if (hintNac) hintNac.style.display = 'none';
+        }
+    };
+
+    setTimeout(() => {
+        cargarDatosAutor();
+        $('#sel-editar-autor')?.addEventListener('change', cargarDatosAutor);
+
+        $('#edit-autor-nombre')?.addEventListener('input', e => {
+            e.target.value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\.\-]/g, '');
+            const nom = e.target.value.trim().toLowerCase();
+            const currentId = +($('#sel-editar-autor')?.value || 0);
+            const hint = $('#hint-edit-autor-duplicado');
+            if (hint) {
+                const existe = (cache.autores || []).find(a => a.id !== currentId && a.nombre.trim().toLowerCase() === nom);
+                if (existe) {
+                    hint.style.display = 'block';
+                    hint.textContent = `Ya existe otro autor registrado con el nombre "${existe.nombre}".`;
+                } else {
+                    hint.style.display = 'none';
+                }
+            }
+        });
+
+        const inpNac = $('#edit-autor-nac');
+        const dropNac = $('#autocomplete-edit-paises');
+        if (inpNac && dropNac) {
+            setupPaisAutocomplete(inpNac, dropNac);
+            inpNac.addEventListener('input', e => {
+                e.target.value = e.target.value.replace(/[^A-Za-zÁÉÍÓÚáéíóúñÑüÜ\s\(\)\.\-]/g, '');
+                const hint = $('#hint-edit-autor-nac');
+                if (hint) hint.style.display = 'none';
+            });
+        }
+    }, 100);
+}
+
+// Botón para abrir modal de gestión de autores
+$('#btn-gestionar-autores')?.addEventListener('click', abrirModalGestionAutores);
+
+// Detección en tiempo real de autor duplicado al escribir en el formulario principal
+$('#autor-nombre')?.addEventListener('input', e => {
+    const nom = e.target.value.trim().toLowerCase();
+    const hint = $('#hint-autor-duplicado');
+    if (hint) {
+        if (!nom) {
+            hint.style.display = 'none';
+        } else {
+            const existe = (cache.autores || []).find(a => a.nombre.trim().toLowerCase() === nom);
+            if (existe) {
+                hint.style.display = 'block';
+                hint.textContent = `⚠️ Ya existe un autor registrado con el nombre "${existe.nombre}". No se permiten autores repetidos.`;
+            } else {
+                hint.style.display = 'none';
+            }
+        }
+    }
+});
+
+
+// =============================================================================
+// AUTOCOMPLETE PARA PAÍS DE ORIGEN (MÁXIMO 5 SUGERENCIAS EN VIVO)
+// =============================================================================
+function setupPaisAutocomplete(inputEl, dropdownEl) {
+    if (!inputEl || !dropdownEl) return;
+
+    const normalize = str => (str || '').normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+    const render = (val) => {
+        const qNorm = normalize(val);
+        if (!qNorm) {
+            dropdownEl.style.display = 'none';
+            dropdownEl.innerHTML = '';
+            return;
+        }
+
+        // Filtrar hasta máximo 5 opciones que coincidan
+        const matches = PAISES.filter(p => normalize(p).includes(qNorm)).slice(0, 5);
+        if (!matches.length) {
+            dropdownEl.style.display = 'none';
+            dropdownEl.innerHTML = '';
+            return;
+        }
+
+        dropdownEl.innerHTML = matches.map(p => `
+            <div class="autocomplete-item" data-val="${esc(p)}">
+                <span>${esc(p)}</span>
+            </div>
+        `).join('');
+        dropdownEl.style.display = 'block';
+    };
+
+    inputEl.addEventListener('input', e => {
+        render(e.target.value);
+    });
+
+    inputEl.addEventListener('focus', e => {
+        if (e.target.value) render(e.target.value);
+    });
+
+    // Selección al hacer clic en una sugerencia
+    dropdownEl.addEventListener('mousedown', e => {
+        const item = e.target.closest('.autocomplete-item');
+        if (item) {
+            inputEl.value = item.dataset.val;
+            dropdownEl.style.display = 'none';
+            dropdownEl.innerHTML = '';
+            inputEl.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // Auto-completar al presionar Enter si hay sugerencias activas
+    inputEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            const firstItem = dropdownEl.querySelector('.autocomplete-item');
+            if (firstItem && dropdownEl.style.display !== 'none') {
+                e.preventDefault();
+                inputEl.value = firstItem.dataset.val;
+                dropdownEl.style.display = 'none';
+                dropdownEl.innerHTML = '';
+                inputEl.dispatchEvent(new Event('change'));
+            }
+        }
+    });
+
+    // Normalizar al perder foco si coincide con un país válido
+    inputEl.addEventListener('blur', () => {
+        setTimeout(() => {
+            const val = inputEl.value.trim();
+            if (val) {
+                const exact = PAISES.find(p => normalize(p) === normalize(val));
+                if (exact) {
+                    inputEl.value = exact;
+                }
+            }
+            dropdownEl.style.display = 'none';
+        }, 200);
+    });
+
+    document.addEventListener('click', e => {
+        if (!inputEl.contains(e.target) && !dropdownEl.contains(e.target)) {
+            dropdownEl.style.display = 'none';
+        }
+    });
+}
+
+// Inicializar autocompletado en formulario principal
+setupPaisAutocomplete($('#autor-nac'), $('#autocomplete-paises'));

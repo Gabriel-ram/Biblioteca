@@ -54,6 +54,12 @@ def init_db():
     if 'dias_prestamo' not in cols_prestamos:
         cursor.execute("ALTER TABLE prestamos ADD COLUMN dias_prestamo INTEGER DEFAULT 7")
         cursor.execute("UPDATE prestamos SET dias_prestamo = 7 WHERE dias_prestamo IS NULL")
+    if 'notif_vencimiento_enviada' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN notif_vencimiento_enviada INTEGER NOT NULL DEFAULT 0")
+    if 'notif_bloqueo_incumplimiento_enviada' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN notif_bloqueo_incumplimiento_enviada INTEGER NOT NULL DEFAULT 0")
+    if 'tipo_notificacion_devolucion' not in cols_prestamos:
+        cursor.execute("ALTER TABLE prestamos ADD COLUMN tipo_notificacion_devolucion TEXT")
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS multas (
@@ -90,11 +96,19 @@ def init_db():
         cursor.execute("ALTER TABLE usuarios ADD COLUMN tipo TEXT NOT NULL DEFAULT 'ESTUDIANTE'")
     if 'activo' not in cols_usuarios:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+    if 'facultad' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN facultad TEXT DEFAULT ''")
+    if 'carrera' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN carrera TEXT DEFAULT ''")
+    if 'tardias_count' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN tardias_count INTEGER NOT NULL DEFAULT 0")
+    if 'bloqueado_motivo' not in cols_usuarios:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN bloqueado_motivo TEXT DEFAULT ''")
 
     # Poblar con usuarios que ya tengan préstamos registrados
     cursor.execute("""
-        INSERT OR IGNORE INTO usuarios (nombre, ci, codigo, fecha_registro, tipo, activo, correo)
-        SELECT DISTINCT usuario, ci, ci, MIN(fecha_prestamo), 'ESTUDIANTE', 1, ''
+        INSERT OR IGNORE INTO usuarios (nombre, ci, codigo, fecha_registro, tipo, activo, correo, facultad, carrera)
+        SELECT DISTINCT usuario, ci, ci, MIN(fecha_prestamo), 'ESTUDIANTE', 1, '', '', ''
         FROM prestamos
         WHERE usuario IS NOT NULL AND ci IS NOT NULL AND TRIM(ci) != ''
         GROUP BY ci
@@ -111,6 +125,8 @@ def init_db():
     cursor.execute("UPDATE usuarios SET correo = '' WHERE correo IS NULL")
     cursor.execute("UPDATE usuarios SET tipo = 'ESTUDIANTE' WHERE tipo IS NULL OR TRIM(tipo) = ''")
     cursor.execute("UPDATE usuarios SET activo = 1 WHERE activo IS NULL")
+    cursor.execute("UPDATE usuarios SET facultad = '' WHERE facultad IS NULL")
+    cursor.execute("UPDATE usuarios SET carrera = '' WHERE carrera IS NULL")
 
     # Índice único sobre usuarios.codigo
     cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_codigo ON usuarios(codigo)")

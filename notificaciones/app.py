@@ -20,7 +20,20 @@ logger = logging.getLogger("notificaciones")
 app = Flask(__name__)
 
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-TIPOS_VALIDOS = {'PRESTAMO', 'POR_VENCER', 'MULTA'}
+TIPOS_VALIDOS = {
+    'PRESTAMO_REGISTRADO',
+    'RECORDATORIO',
+    'VENCIMIENTO',
+    'BLOQUEO_POR_INCUMPLIMIENTO',
+    'DEVOLUCION_CONFIRMADA',
+    'DEVOLUCION_TARDIA_1',
+    'DEVOLUCION_TARDIA_2',
+    'BLOQUEO_POR_REINCIDENCIA',
+    'DEVOLUCION_CRITICA',
+    'PRESTAMO',
+    'POR_VENCER',
+    'MULTA'
+}
 
 
 def validar_formato_correo(correo: str) -> bool:

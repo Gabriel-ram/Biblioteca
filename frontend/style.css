@@ -3084,3 +3084,51 @@ td.td-code {
 .user-tipo-label.tipo-estudiante {
     color: #2563eb;
 }
+
+
+/* Tarjetas KPI como botones interactivos (Requerimiento 11) */
+.kpi-card.kpi-clickable {
+    cursor: pointer !important;
+    user-select: none;
+    position: relative;
+}
+.kpi-card.kpi-clickable:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px -3px rgba(37, 99, 235, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-color: #93c5fd;
+}
+.kpi-card.kpi-clickable:active {
+    transform: translateY(0);
+}
+
+
+/* Autocomplete para País de Origen / Nacionalidad */
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+    z-index: 1050;
+    max-height: 220px;
+    padding: 4px;
+}
+.autocomplete-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.autocomplete-item:hover {
+    background-color: #eff6ff;
+    color: #2563eb;
+    font-weight: 600;
+}

@@ -25,7 +25,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS autores (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nombre TEXT NOT NULL,
-            nacionalidad TEXT
+            nacionalidad TEXT,
+            area TEXT DEFAULT ''
         )
     ''')
     
@@ -34,12 +35,28 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL,
             autor_id INTEGER,
+            genero TEXT NOT NULL DEFAULT 'General',
+            edicion TEXT DEFAULT '',
             ejemplares_totales INTEGER NOT NULL DEFAULT 1,
             ejemplares_disponibles INTEGER NOT NULL DEFAULT 1,
             estado TEXT NOT NULL DEFAULT 'DISPONIBLE',
             FOREIGN KEY (autor_id) REFERENCES autores (id) ON DELETE SET NULL
         )
     ''')
+
+    # Migración de columnas en autores
+    cursor.execute("PRAGMA table_info(autores)")
+    cols_autores = {row[1] for row in cursor.fetchall()}
+    if 'area' not in cols_autores:
+        cursor.execute("ALTER TABLE autores ADD COLUMN area TEXT DEFAULT ''")
+
+    # Migración de columnas en libros
+    cursor.execute("PRAGMA table_info(libros)")
+    cols_libros = {row[1] for row in cursor.fetchall()}
+    if 'genero' not in cols_libros:
+        cursor.execute("ALTER TABLE libros ADD COLUMN genero TEXT NOT NULL DEFAULT 'General'")
+    if 'edicion' not in cols_libros:
+        cursor.execute("ALTER TABLE libros ADD COLUMN edicion TEXT DEFAULT ''")
 
     # Deduplicar autores existentes y reasignar libros al primer autor
     cursor.execute('''
@@ -58,6 +75,12 @@ def init_db():
             dup_id = dup['id']
             cursor.execute("UPDATE libros SET autor_id = ? WHERE autor_id = ?", (keeper_id, dup_id))
             cursor.execute("DELETE FROM autores WHERE id = ?", (dup_id,))
+
+    # Índice único sobre autores para evitar nombres duplicados
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_autores_nombre
+        ON autores(LOWER(TRIM(nombre)))
+    ''')
 
     # Deduplicar libros existentes (mismo título normalizado y autor) consolidando ejemplares
     cursor.execute('''

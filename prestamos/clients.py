@@ -56,6 +56,9 @@ class CatalogoClient:
     def eliminar_libro(self, libro_id: int) -> requests.Response:
         return self._request("DELETE", f"/libros/{libro_id}")
 
+    def reincorporar_libro(self, libro_id: int) -> requests.Response:
+        return self._request("POST", f"/libros/{libro_id}/reincorporar")
+
     def obtener_autores(self, params: dict = None) -> requests.Response:
         return self._request("GET", "/autores", params=params)
 
