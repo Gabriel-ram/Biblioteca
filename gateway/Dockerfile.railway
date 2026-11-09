@@ -1,0 +1,6 @@
+# Dockerfile del gateway para Railway.
+# Se construye con el contexto en la RAÍZ del repo (necesita ./frontend y ./gateway).
+FROM caddy:2-alpine
+
+COPY gateway/Caddyfile.railway /etc/caddy/Caddyfile
+COPY frontend /srv/frontend

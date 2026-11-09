@@ -1,0 +1,75 @@
+# =============================================================================
+# Caddyfile.railway — Gateway para desplegar en Railway (demo)
+# - Escucha en el puerto que Railway inyecta ($PORT)
+# - Sirve el frontend estático y enruta /api/* por la red privada de Railway
+# - Los upstreams se pueden cambiar con variables de entorno del servicio
+# =============================================================================
+
+{
+    admin off
+    auto_https off
+}
+
+:{$PORT:8080} {
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy no-referrer
+    }
+
+    encode gzip
+
+    request_body {
+        max_size 1MB
+    }
+
+    handle /healthz {
+        respond "OK" 200
+    }
+
+    handle_path /api/catalogo/* {
+        reverse_proxy {$CATALOGO_UPSTREAM:catalogo.railway.internal:8001}
+    }
+
+    handle_path /api/prestamos/* {
+        reverse_proxy {$PRESTAMOS_UPSTREAM:prestamos.railway.internal:8002}
+    }
+
+    # POST /notificar es interno: se bloquea siempre
+    @bloquear_notificar {
+        method POST
+        path /api/notificaciones/notificar
+    }
+    handle @bloquear_notificar {
+        respond 404
+    }
+
+    handle_path /api/notificaciones/* {
+        @get_only method GET
+        @reintentar {
+            method POST
+            path /notificaciones/*/reintentar
+        }
+        route {
+            handle @get_only {
+                reverse_proxy {$NOTIFICACIONES_UPSTREAM:notificaciones.railway.internal:8003}
+            }
+            handle @reintentar {
+                reverse_proxy {$NOTIFICACIONES_UPSTREAM:notificaciones.railway.internal:8003}
+            }
+            handle {
+                respond 404
+            }
+        }
+    }
+
+    handle /api/* {
+        respond 404
+    }
+
+    handle /* {
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}
