@@ -4,7 +4,10 @@ import ssl
 import json
 import html
 import smtplib
+import base64
 import logging
+import urllib.error
+import urllib.request
 import email.utils
 from email.message import EmailMessage
 
@@ -373,10 +376,64 @@ def preparar_contenido_correo(tipo: str, usuario: str, asunto: str = None, mensa
 
     return asunto_final, texto_plano.strip(), html_content
 
+MAILJET_API_URL_DEFAULT = "https://api.mailjet.com/v3.1/send"
+
+
+def _enviar_mailjet(correo_destino: str, asunto: str, texto_plano: str, html_content: str):
+    """Envía el correo por HTTPS usando la Send API v3.1 de Mailjet (sin SMTP)."""
+    api_key = (os.getenv("MAILJET_API_KEY") or "").strip()
+    api_secret = (os.getenv("MAILJET_API_SECRET") or "").strip()
+    if not api_key or not api_secret:
+        raise RuntimeError("Mailjet: faltan MAILJET_API_KEY o MAILJET_API_SECRET")
+
+    url = (os.getenv("MAILJET_API_URL") or MAILJET_API_URL_DEFAULT).strip()
+    timeout = float(os.getenv("MAILJET_TIMEOUT") or 15)
+    mail_from = os.getenv("MAIL_FROM") or "biblioteca@example.com"
+    mail_from_name = os.getenv("MAIL_FROM_NAME") or "Sistema Biblioteca"
+
+    payload = {
+        "Messages": [{
+            "From": {"Email": mail_from, "Name": mail_from_name},
+            "To": [{"Email": correo_destino}],
+            "Subject": asunto,
+            "TextPart": texto_plano,
+            "HTMLPart": html_content,
+        }]
+    }
+    token = base64.b64encode(f"{api_key}:{api_secret}".encode("utf-8")).decode("ascii")
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={"Content-Type": "application/json", "Authorization": f"Basic {token}"},
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        detalle = e.read().decode("utf-8", "replace")[:300]
+        raise RuntimeError(f"Mailjet HTTP {e.code}: {detalle}") from None
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Mailjet no disponible: {e.reason}") from None
+
+    try:
+        status = json.loads(body)["Messages"][0]["Status"]
+    except Exception:
+        raise RuntimeError(f"Mailjet respuesta inesperada: {body[:200]}") from None
+    if status != "success":
+        raise RuntimeError(f"Mailjet rechazó el mensaje (status={status}): {body[:200]}")
+
+
 def enviar_correo(correo_destino: str, asunto: str, texto_plano: str, html_content: str):
     """Envía un correo electrónico multipart (texto plano + HTML) mediante smtplib."""
     if not correo_destino or "@" not in correo_destino:
         raise ValueError("Correo destino no válido")
+
+    # Proveedor: "smtp" (por defecto, Mailpit/Gmail) o "mailjet" (HTTPS, para Railway)
+    if (os.getenv("MAIL_PROVIDER") or "smtp").strip().lower() == "mailjet":
+        _enviar_mailjet(correo_destino, asunto, texto_plano, html_content)
+        return
 
     # Lectura segura con 'os.getenv(...) or valor_por_defecto' para tolerar variables vacías
     host = os.getenv("SMTP_HOST") or "mailpit"
